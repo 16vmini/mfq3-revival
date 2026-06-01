@@ -1602,6 +1602,37 @@ void Cmd_ME_SpawnGI_f( GameEntity *ent )
 ClientCommand
 =================
 */
+/*
+=================
+Cmd_Sarge_f
+
+MFQ3 dev/test: force-spawn the calling client as the LQM (Sarge) infantry,
+bypassing the vehicle-select menu (which doesn't list CAT_LQM yet).
+Type \sarge in the console (after joining a team).
+=================
+*/
+void Cmd_Sarge_f( int clientNum )
+{
+	char	userinfo[MAX_INFO_STRING];
+	int		i, lqmIdx = -1;
+
+	for( i = 0; i < bg_numberOfVehicles; i++ ) {
+		if( availableVehicles[i].cat & CAT_LQM ) { lqmIdx = i; break; }
+	}
+	if( lqmIdx < 0 ) {
+		Com_Printf( "Cmd_Sarge_f: no CAT_LQM (infantry) vehicle found\n" );
+		return;
+	}
+
+	SV_GetUserinfo( clientNum, userinfo, sizeof( userinfo ) );
+	Info_SetValueForKey( userinfo, "cg_nextVehicle", va( "%d", lqmIdx ) );
+	SV_SetUserinfo( clientNum, userinfo );
+	ClientUserinfoChanged( clientNum );
+
+	MF_ClientBegin( clientNum );
+	Com_Printf( "Spawning as LQM '%s' (index %d)\n", availableVehicles[lqmIdx].descriptiveName, lqmIdx );
+}
+
 void ClientCommand( int clientNum )
 {
 	GameEntity *ent;
@@ -1631,6 +1662,11 @@ void ClientCommand( int clientNum )
 	if( Q_stricmp( cmd, "score" ) == 0 )
 	{
 		Cmd_Score_f( ent );
+		return;
+	}
+	if( Q_stricmp( cmd, "sarge" ) == 0 )		// MFQ3 dev: spawn as LQM infantry
+	{
+		Cmd_Sarge_f( clientNum );
 		return;
 	}
 

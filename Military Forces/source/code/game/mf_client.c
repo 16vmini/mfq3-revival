@@ -175,6 +175,26 @@ void MF_ClientBegin( int clientNum )
 	// MFQ3 prepare
 	client->vehicle_ = client->nextVehicle_ = -1;
 
+	// MFQ3 dev: auto-spawn straight as the LQM (Sarge), skipping the menu,
+	// when mf_autoLQM is set. Lets us reproduce/test the infantry without
+	// navigating the team/vehicle menu.
+	if( Cvar_VariableIntegerValue( "mf_autoLQM" ) )
+	{
+		char	ui[MAX_INFO_STRING];
+		int		v, lqm = -1;
+		for( v = 0; v < bg_numberOfVehicles; v++ )
+			if( availableVehicles[v].cat & CAT_LQM ) { lqm = v; break; }
+		if( lqm >= 0 )
+		{
+			client->sess_.sessionTeam_ = ClientBase::TEAM_RED;
+			SV_GetUserinfo( clientNum, ui, sizeof( ui ) );
+			Info_SetValueForKey( ui, "cg_nextVehicle", va( "%d", lqm ) );
+			SV_SetUserinfo( clientNum, ui );
+			ClientUserinfoChanged( clientNum );
+			Com_Printf( "MFtrace: mf_autoLQM -> forcing spawn as LQM index %d\n", lqm );
+		}
+	}
+
 	// locate ent at a spawn point
 	MF_ClientSpawn( clientNum, 0 );
 
@@ -233,6 +253,7 @@ void MF_ClientSpawn( int clientNum, long cs_flags )
 	int vehIndex = atoi( Info_ValueForKey( userinfo, "cg_nextVehicle" ) );
 
 	GameEntity* ent;
+	Com_Printf( "MFtrace: MF_ClientSpawn vehIndex=%d (numVeh=%d) cat=%u\n", vehIndex, bg_numberOfVehicles, availableVehicles[vehIndex].cat );
 	switch( availableVehicles[vehIndex].cat )
 	{
 	case CAT_PLANE:
@@ -340,7 +361,10 @@ void MF_ClientSpawn( int clientNum, long cs_flags )
 					continue;	// try again
 
 				// check for category on this spawn point
-				if( !(spawnPoint->ent_category_ & availableVehicles[vehIndex].cat) ) 
+				// MFQ3: infantry (LQM) has no dedicated spawn category on existing
+				// maps, so let it use any vehicle spawn point.
+				if( !(availableVehicles[vehIndex].cat & CAT_LQM) &&
+					!(spawnPoint->ent_category_ & availableVehicles[vehIndex].cat) )
 					continue;
 				
 				break;
@@ -518,6 +542,9 @@ void MF_ClientSpawn( int clientNum, long cs_flags )
 			MF_Spawn_Boat( ent, vehIndex );
 		}
 
+		Com_Printf( "MFtrace: cat-spawn done; bbox min=(%g %g %g) max=(%g %g %g)\n",
+			availableVehicles[vehIndex].mins[0], availableVehicles[vehIndex].mins[1], availableVehicles[vehIndex].mins[2],
+			availableVehicles[vehIndex].maxs[0], availableVehicles[vehIndex].maxs[1], availableVehicles[vehIndex].maxs[2] );
 		VectorCopy (availableVehicles[vehIndex].mins, ent->r.mins);
 		VectorCopy (availableVehicles[vehIndex].maxs, ent->r.maxs);
 
@@ -589,9 +616,11 @@ void MF_ClientSpawn( int clientNum, long cs_flags )
 	} 
 	else 
 	{
+		Com_Printf( "MFtrace: pre KillBox/LinkEntity\n" );
 		if(!(cs_flags & CS_NOKILL))
 			G_KillBox( ent );
 		SV_LinkEntity (ent);
+		Com_Printf( "MFtrace: post LinkEntity (spawn nearly done)\n" );
 	}
 
 	// reset radar

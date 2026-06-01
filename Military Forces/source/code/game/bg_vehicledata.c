@@ -3098,7 +3098,6 @@ completeVehicleData_t availableVehicles[] =
 	// ---------------------------------------------
 	// Infantry
 	// ---------------------------------------------
-	/*
 	{	"Sarge",	// descriptiveName
 	"Soldier",					// tinyName
 	"sarge",					// modelName
@@ -3149,6 +3148,7 @@ completeVehicleData_t availableVehicles[] =
 	{0,0,0,0}					// shadow orientation adjusters
     },
 
+	/*
 	{	"Major",				// descriptiveName
 	"Soldier",					// tinyName
 	"major",					// modelName

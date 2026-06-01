@@ -565,7 +565,7 @@ void CG_CacheVehicles()
 	
 	for( i = 0; i < bg_numberOfVehicles; i++ )
 	{
-		if( availableVehicles[i].gameset & cgs.gameset ) {
+		if( (availableVehicles[i].gameset & cgs.gameset) || (availableVehicles[i].cat & CAT_LQM) ) {	// MFQ3: always cache infantry (gameset-independent)
 			CG_LoadingString(availableVehicles[i].descriptiveName);
 			if( availableVehicles[i].cat & CAT_PLANE ) {
 					CG_CachePlane(i);

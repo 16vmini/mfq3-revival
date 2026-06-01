@@ -64,6 +64,7 @@ void CG_LQM( centity_t *cent, clientInfo_t *ci )
 
 
 	memset( &drawInfo, 0, sizeof(drawInfo) );
+	{ static int lqmTrace = 0; if( lqmTrace++ < 3 ) Com_Printf( "MFtrace: CG_LQM render reached (frame %d)\n", lqmTrace ); }
 	drawInfo.basicInfo.vehicleIndex = ci->vehicle;
 	drawInfo.basicInfo.ONOFF = ONOFF;
 
