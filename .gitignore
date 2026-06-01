@@ -1,0 +1,33 @@
+# Third-party engine clones (clone separately)
+/ioq3-reference/
+/mfq3-portable/
+
+# Local playable build + proprietary MFQ3 alpha game data (NOT for public redistribution)
+/play/
+/dist/
+
+# Scratch / staging
+/_incoming/
+/_lqmpak/
+
+# Archives & large binaries
+*.zip
+*.exe
+*.dll
+*.lib
+*.pdb
+*.obj
+*.ilk
+*.exp
+
+# Build output
+build/
+**/build/
+*/compiler_output/
+
+# OS / editor
+Thumbs.db
+.DS_Store
+*.user
+*.suo
+/mfq3-ioq3/
