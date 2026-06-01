@@ -60,3 +60,38 @@ at it. One model is enough to prove "spawn as a little person."
    crouch/shoot/die render — validates ~80% with zero new code.
 3. Build `MF_SwapVehicle` (no-death index swap); bind a "dismount" key.
 4. Add "enter": LQM use-trace vs nearby vehicle entities → swap back. Closes the loop.
+
+---
+
+## Reactivation log (this session) — WORKING, with a polish punch-list
+
+**Status: a soldier spawns and walks, 90fps, no crash.** Committed on `feature/lqm`.
+
+Fixes applied (see commit on feature/lqm):
+1. Enabled the Sarge data row (`game/bg_vehicledata.c`).
+2. `\sarge` console command + `mf_autoLQM` auto-spawn (`game/g_cmds.c`, `game/mf_client.c`).
+3. **Spawn-point fix** — no map has `CAT_LQM` spawn points, so the picker found none →
+   early return → half-spawn → engine `SV_BuildClientSnapshot: bad client`. Fix: LQM uses
+   any spawn point (`game/mf_client.c`, the `spawnPoint->ent_category_` gate).
+4. **Cache fix** — `CG_CacheVehicles` only caches vehicles whose `gameset` matches the current
+   one (`cgame/cg_vehicle.c:568`); Sarge is `MODERN`, didn't match → `CG_CacheLQM` skipped →
+   `animations` NULL → `CG_DrawLQM` null-deref crash. Fix: always cache `CAT_LQM`. + NULL-guard.
+5. **Random-crash data fix** — Mark's `animation.cfg` referenced frames 0-24 but the model has
+   1 frame; the old renderer read past the frame array as the anim "played" (random crash).
+   Override pak `zz_lqmfix.pk3` (not in repo): all animations -> frame 0. Proper fix = a real
+   multi-frame animated model.
+- Model: CC0 `assets/lqm_sarge.pk3` (3 MD3 parts, correct tags), built from scratch.
+
+### Remaining punch-list (next)
+- **Persistent select overlay**: `cg_draw.c:2193` shows it while client `cg_vehicle == -1`. The
+  LQM's vehicle index isn't reaching the client's `cg_vehicle` cvar via the "v" configstring
+  (`game/g_client.c` ClientUserinfoChanged -> `cgame/cg_players.c:170-179`). Trace the sync.
+- **Dies in water**: `bg_lqmmove.c` has no swim/water handling; add water checks (or make LQM
+  amphibious-tolerant) instead of vehicle-style water death.
+- **Can't shoot**: infantry weapon-fire path not wired (`g_weapon.c` / the LQM weapon in
+  `bg_vehicledata` is `WI_MG_M4A1`); hook firing for `CAT_LQM`.
+- **Tiny / can't see**: `LQM_SCALE 0.1`; tune render scale and/or third-person camera
+  (`availableVehicles[].camDist/camHeight` for the LQM row) so the soldier is visible.
+- **Enter/exit vehicles** (the dream's middle): `MF_SwapVehicle` index-swap + a spawned,
+  walk-up-able vehicle entity in the map.
+- Remove the temporary `MFtrace`/`DrawLQMtrace` debug logging before a clean release.
