@@ -459,7 +459,8 @@ static void CG_CacheGroundInstallation(int index)
 	char basename[128];
 	int i;
 
-	Com_sprintf( basename, sizeof(basename), "models/vehicles/npc/%s/%s", 
+	// MFQ3: GI models actually ship under models/vehicles/ground/<name>/, not npc/
+	Com_sprintf( basename, sizeof(basename), "models/vehicles/ground/%s/%s",
 				 availableGroundInstallations[index].modelName,
 				 availableGroundInstallations[index].modelName );
 // changed mg

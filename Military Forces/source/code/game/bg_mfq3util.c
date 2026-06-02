@@ -300,7 +300,8 @@ char * MF_CreateGIPathname( int vehicle, char * pFormatString )
 //	unsigned int cat = 0;
 
 	// find catagory
-	strcpy( catDir, "npc" );
+	// MFQ3: GI assets live under models/vehicles/ground/, not npc/
+	strcpy( catDir, "ground" );
 
 	// create filename string
 	pReturnString = va( pFormatString, catDir, availableGroundInstallations[ vehicle ].modelName, 

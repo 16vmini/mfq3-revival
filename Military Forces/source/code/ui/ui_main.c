@@ -2065,7 +2065,7 @@ static void UI_DrawVehiclePreview( rectDef_t *rect, float scale, const vec4_t co
 		if(UI_CAT_GI == vehicleCat &&  vehicle < bg_numberOfGroundInstallations) {
 			if( pictureHandle == -1 || lastVehicle != vehicle ) {
 				// create filename string
-				pIconString = va( "models/vehicles/npc/%s/%s_icon", availableGroundInstallations[ vehicle ].modelName, availableGroundInstallations[ vehicle ].modelName );
+				pIconString = va( "models/vehicles/ground/%s/%s_icon", availableGroundInstallations[ vehicle ].modelName, availableGroundInstallations[ vehicle ].modelName );
 				pictureHandle = refExport.RegisterShaderNoMip( pIconString );
 			}
 		} else if (vehicle < bg_numberOfVehicles) {
