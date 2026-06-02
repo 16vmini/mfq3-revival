@@ -636,11 +636,15 @@ void ClientThink_real( GameEntity *ent )
 
 	// MFQ3 dev: scripted auto-fire (mf_autoFire) to exercise weapons without a human.
 	// Cycles the selected weapon slot every 1.5s and holds both fire buttons.
-	if( Cvar_VariableIntegerValue( "mf_autoFire" ) && client->vehicle_ >= 0 )
+	if( Cvar_VariableIntegerValue( "mf_autoFire" ) )
 	{
-		ucmd->buttons |= ( BUTTON_ATTACK | BUTTON_ATTACK_MAIN );
-		ucmd->weapon = ( theLevel.time_ / 1500 ) % 8;
-		client->ps_.ONOFF &= ~( OO_LANDED | OO_STALLED );	// let a grounded test jet fire its main weapons
+		client->ps_.pm_flags &= ~PMF_VEHICLESELECT;			// force out of limbo so the pmove/fire path runs
+		if( client->vehicle_ >= 0 )
+		{
+			ucmd->buttons |= ( BUTTON_ATTACK | BUTTON_ATTACK_MAIN );
+			ucmd->weapon = ( theLevel.time_ / 1500 ) % 8;
+			client->ps_.ONOFF &= ~( OO_LANDED | OO_STALLED );	// let a grounded test jet fire its main weapons
+		}
 	}
 
 	// sanity check the command time to prevent speedup cheating

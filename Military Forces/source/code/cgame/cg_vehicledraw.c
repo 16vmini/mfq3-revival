@@ -635,9 +635,7 @@ void CG_DrawLQM(DrawInfo_LQM_t* drawInfo)
 	int				lastLegsFrame;
 
 	completeVehicleData_t* veh = &availableVehicles[drawInfo->basicInfo.vehicleIndex];
-	static int _dbgLQM = 0; int _dbg = (_dbgLQM++ < 1);
-	if(_dbg) Com_Printf( "DrawLQMtrace: enter; anim=0x%x weaponIndex=%d animations=%p\n", anim, drawInfo->weaponIndex, (void*)veh->animations );
-	if( !veh->animations ) { if(_dbg) Com_Printf( "DrawLQMtrace: NULL animations -> skip render (no crash)\n" ); return; }
+	if( !veh->animations ) return;	// no LQM animation data loaded -> skip render rather than crash
 
 	for( i = 0; i < BP_LQM_MAX_PARTS+1; i++ )
 	{
@@ -895,7 +893,6 @@ void CG_DrawLQM(DrawInfo_LQM_t* drawInfo)
     part[BP_LQM_LEGS].renderfx = renderfx;
     VectorCopy (part[BP_LQM_LEGS].origin, part[BP_LQM_LEGS].oldorigin);
     refExport.AddRefEntityToScene( &part[BP_LQM_LEGS] );
-	if(_dbg) Com_Printf( "DrawLQMtrace: legs added (legsFrame=%d)\n", part[BP_LQM_LEGS].frame );
 
 	//
 	// Add Torso
@@ -925,7 +922,6 @@ void CG_DrawLQM(DrawInfo_LQM_t* drawInfo)
 	part[BP_LQM_TORSO].shadowPlane = shadowPlane;
 	part[BP_LQM_TORSO].renderfx = renderfx;
 	refExport.AddRefEntityToScene( &part[BP_LQM_TORSO] );
-	if(_dbg) Com_Printf( "DrawLQMtrace: torso added\n" );
 
 	// Add Head
 	part[BP_LQM_HEAD].hModel = veh->handle[BP_LQM_HEAD];
@@ -940,10 +936,8 @@ void CG_DrawLQM(DrawInfo_LQM_t* drawInfo)
 	part[BP_LQM_HEAD].shadowPlane = shadowPlane;
 	part[BP_LQM_HEAD].renderfx = renderfx;
 	refExport.AddRefEntityToScene( &part[BP_LQM_HEAD] );
-	if(_dbg) Com_Printf( "DrawLQMtrace: head added; weaponIndex=%d (numWeapons check)\n", drawInfo->weaponIndex );
 
 	// Add Weapon
-	if(_dbg) Com_Printf( "DrawLQMtrace: pre-weapon (weaponIndex=%d)\n", drawInfo->weaponIndex );
 	part[BP_LQM_MAX_PARTS].hModel = availableWeapons[drawInfo->weaponIndex].modelHandle;
 	VectorCopy( drawInfo->basicInfo.origin, part[BP_LQM_MAX_PARTS].lightingOrigin );
 	AxisCopy( axisDefault , part[BP_LQM_MAX_PARTS].axis); 
@@ -951,7 +945,6 @@ void CG_DrawLQM(DrawInfo_LQM_t* drawInfo)
 	part[BP_LQM_MAX_PARTS].shadowPlane = shadowPlane;
 	part[BP_LQM_MAX_PARTS].renderfx = renderfx;
 	refExport.AddRefEntityToScene( &part[BP_LQM_MAX_PARTS] );
-	if(_dbg) Com_Printf( "DrawLQMtrace: weapon added; CG_DrawLQM complete\n" );
 
 	// muzzleflash
 	if( drawInfo->basicInfo.drawMuzzleFlash ) {

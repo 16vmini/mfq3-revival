@@ -169,14 +169,26 @@ void CG_NewClientInfo( int clientNum ) {
 	// MFQ3: vehicle
 	v = Info_ValueForKey( configstring, "v" );
 	newInfo.vehicle = atoi( v );
-	if( newInfo.vehicle >= 0 && clientNum == cg.predictedPlayerEntity.currentState.clientNum )
+	// Sync cg_vehicle for the local player. Accept EITHER the entity we're currently
+	// predicting/following (original behaviour, keeps spectator-follow HUD working) OR
+	// our own client slot (cg.clientNum) -- the latter covers spawn paths where the
+	// predicted entity's state hasn't populated its clientNum yet (e.g. fresh spawn),
+	// which is what left cg_vehicle stuck at -1 ("nothing on HUD"). LQM is deliberately
+	// excluded so the infantry path is unchanged (no regression).
 	{
-		Cvar_Set( "cg_vehicle", va( "%d", newInfo.vehicle ) );
-		// only set "cg_nextvehicle" to the same as "cg_vehicle" when we currently don't have
-		// a vehicle index in it.
-		if( CG_Cvar_Get( "cg_nextVehicle" ) == -1 )
+		bool isLocalPlayer = ( clientNum == cg.clientNum ) ||
+			( clientNum == cg.predictedPlayerEntity.currentState.clientNum );
+		bool isLQM = ( newInfo.vehicle >= 0 ) &&
+			( availableVehicles[newInfo.vehicle].cat & CAT_LQM );
+		if( newInfo.vehicle >= 0 && isLocalPlayer && !isLQM )
 		{
-			Cvar_Set( "cg_nextVehicle", va( "%d", newInfo.vehicle ) );
+			Cvar_Set( "cg_vehicle", va( "%d", newInfo.vehicle ) );
+			// only set "cg_nextvehicle" to the same as "cg_vehicle" when we currently don't have
+			// a vehicle index in it.
+			if( CG_Cvar_Get( "cg_nextVehicle" ) == -1 )
+			{
+				Cvar_Set( "cg_nextVehicle", va( "%d", newInfo.vehicle ) );
+			}
 		}
 	}
 

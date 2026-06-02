@@ -196,7 +196,6 @@ void MF_ClientBegin( int clientNum )
 			Info_SetValueForKey( ui, "cg_nextVehicle", va( "%d", spawnVeh ) );
 			SV_SetUserinfo( clientNum, ui );
 			ClientUserinfoChanged( clientNum );
-			Com_Printf( "MFtrace: auto-spawn as vehicle %d (%s)\n", spawnVeh, availableVehicles[spawnVeh].descriptiveName );
 		}
 	}
 
@@ -258,7 +257,6 @@ void MF_ClientSpawn( int clientNum, long cs_flags )
 	int vehIndex = atoi( Info_ValueForKey( userinfo, "cg_nextVehicle" ) );
 
 	GameEntity* ent;
-	Com_Printf( "MFtrace: MF_ClientSpawn vehIndex=%d (numVeh=%d) cat=%u\n", vehIndex, bg_numberOfVehicles, availableVehicles[vehIndex].cat );
 	switch( availableVehicles[vehIndex].cat )
 	{
 	case CAT_PLANE:
@@ -547,9 +545,6 @@ void MF_ClientSpawn( int clientNum, long cs_flags )
 			MF_Spawn_Boat( ent, vehIndex );
 		}
 
-		Com_Printf( "MFtrace: cat-spawn done; bbox min=(%g %g %g) max=(%g %g %g)\n",
-			availableVehicles[vehIndex].mins[0], availableVehicles[vehIndex].mins[1], availableVehicles[vehIndex].mins[2],
-			availableVehicles[vehIndex].maxs[0], availableVehicles[vehIndex].maxs[1], availableVehicles[vehIndex].maxs[2] );
 		VectorCopy (availableVehicles[vehIndex].mins, ent->r.mins);
 		VectorCopy (availableVehicles[vehIndex].maxs, ent->r.maxs);
 
@@ -621,11 +616,9 @@ void MF_ClientSpawn( int clientNum, long cs_flags )
 	} 
 	else 
 	{
-		Com_Printf( "MFtrace: pre KillBox/LinkEntity\n" );
 		if(!(cs_flags & CS_NOKILL))
 			G_KillBox( ent );
 		SV_LinkEntity (ent);
-		Com_Printf( "MFtrace: post LinkEntity (spawn nearly done)\n" );
 	}
 
 	// reset radar
