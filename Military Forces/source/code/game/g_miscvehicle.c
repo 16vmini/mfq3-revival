@@ -537,6 +537,24 @@
 // .mis files, not baked into the compiled map.
 //==================================================================
 
+// Trace straight down from a placed origin to find the ground surface.
+// Returns true and fills groundZ on a hit; false if nothing solid is below.
+static bool MF_GroundBelow( const vec3_t origin, float* groundZ )
+{
+	trace_t	trace;
+	vec3_t	start, end;
+
+	VectorCopy( origin, start );	start[2] += 64;
+	VectorCopy( origin, end );		end[2]   -= 8192;
+	SV_Trace( &trace, start, NULL, NULL, end, ENTITYNUM_NONE, MASK_SOLID, false );
+
+	if( trace.startsolid || trace.allsolid || trace.fraction >= 1.0f )
+		return false;
+
+	*groundZ = trace.endpos[2];
+	return true;
+}
+
 // no-op pain: static props/targets don't flinch, but combat calls
 // painFunc_->execute() unguarded, so it must be non-NULL.
 void Pain_MiscVehicle::execute( GameEntity* attacker, int damage )
@@ -564,6 +582,26 @@ GameEntity* G_SpawnMissionVehicle( int vehIdx, int team, vec3_t origin, vec3_t a
 
 	VectorCopy( availableVehicles[vehIdx].mins, ent->r.mins );
 	VectorCopy( availableVehicles[vehIdx].maxs, ent->r.maxs );
+
+	// drop onto the terrain instead of floating where it was placed in the
+	// editor; aircraft additionally get a gear-down "parked" pose
+	unsigned long cat = availableVehicles[vehIdx].cat;
+	float groundZ;
+	if( MF_GroundBelow( origin, &groundZ ) )
+	{
+		float gear = 0;
+		if( (cat & (CAT_PLANE|CAT_HELO)) && (availableVehicles[vehIdx].caps & HC_GEAR) )
+		{
+			gear = (float)availableVehicles[vehIdx].gearheight;
+			ent->gearheight_ = gear;
+		}
+		origin[2] = groundZ - availableVehicles[vehIdx].mins[2] + gear;
+
+		if( cat & (CAT_PLANE|CAT_HELO) )
+			ent->s.ONOFF = OO_LANDED | OO_STALLED | OO_GEAR;	// parked, gear down
+		else
+			ent->s.ONOFF = OO_LANDED;
+	}
 
 	VectorCopy( origin, ent->s.origin );
 	VectorCopy( angles, ent->s.angles );
@@ -610,6 +648,11 @@ GameEntity* G_SpawnMissionGroundInstallation( int giIdx, int team, vec3_t origin
 
 	VectorCopy( availableGroundInstallations[giIdx].mins, ent->r.mins );
 	VectorCopy( availableGroundInstallations[giIdx].maxs, ent->r.maxs );
+
+	// drop the installation onto the terrain (no floating SAMs)
+	float groundZ;
+	if( MF_GroundBelow( origin, &groundZ ) )
+		origin[2] = groundZ - availableGroundInstallations[giIdx].mins[2] + 1;
 
 	VectorCopy( origin, ent->s.origin );
 	VectorCopy( angles, ent->s.angles );

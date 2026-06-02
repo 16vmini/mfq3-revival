@@ -145,6 +145,8 @@ void G_MissionTargetDestroyed( GameEntity* target )
 
 	if( s_missionTargetsRemaining > 0 )
 	{
+		Com_Printf( "Mission: objective target destroyed (%d/%d remaining).\n",
+			s_missionTargetsRemaining, s_missionTargetsTotal );
 		SV_GameSendServerCommand( -1, va( "cp \"Target destroyed - %d remaining\n\"", s_missionTargetsRemaining ) );
 		return;
 	}
