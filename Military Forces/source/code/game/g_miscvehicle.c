@@ -4,6 +4,9 @@
 
 
 #include "g_local.h"
+#include "g_entity.h"
+#include "g_level.h"
+#include "g_mfq3ents.h"
 
 
 //------------------------------------------------------------------
@@ -524,4 +527,122 @@
 //
 //	G_FreeEntity(sp_ent);
 //}
+
+
+//==================================================================
+// MFQ3 mission revival
+//
+// Direct spawn helpers (new GameEntity API). These replace the old
+// BSP-template SP_misc_* path above: mission entities are placed by
+// .mis files, not baked into the compiled map.
+//==================================================================
+
+// no-op pain: static props/targets don't flinch, but combat calls
+// painFunc_->execute() unguarded, so it must be non-NULL.
+void Pain_MiscVehicle::execute( GameEntity* attacker, int damage )
+{
+}
+
+GameEntity* G_SpawnMissionVehicle( int vehIdx, int team, vec3_t origin, vec3_t angles )
+{
+	if( vehIdx < 0 || vehIdx >= bg_numberOfVehicles )
+	{
+		Com_Printf( S_COLOR_RED "G_SpawnMissionVehicle: vehicle index %d out of range\n", vehIdx );
+		return NULL;
+	}
+
+	GameEntity* ent = theLevel.spawnEntity();		// already init'd with a valid number
+	ent->classname_		= "misc_vehicle";
+	ent->client_		= NULL;
+	ent->s.eType		= ET_MISC_VEHICLE;
+	ent->s.modelindex	= vehIdx;
+	ent->s.modelindex2	= 255;						// 255 here = "a vehicle, not a ground installation"
+
+	if( g_gametype.integer >= GT_TEAM &&
+		( team == ClientBase::TEAM_RED || team == ClientBase::TEAM_BLUE ) )
+		ent->s.generic1 = team;
+
+	VectorCopy( availableVehicles[vehIdx].mins, ent->r.mins );
+	VectorCopy( availableVehicles[vehIdx].maxs, ent->r.maxs );
+
+	VectorCopy( origin, ent->s.origin );
+	VectorCopy( angles, ent->s.angles );
+	G_SetOrigin( ent, origin );
+	VectorCopy( angles, ent->s.apos.trBase );
+
+	ent->s.groundEntityNum	= ENTITYNUM_NONE;
+	ent->r.svFlags			= SVF_USE_CURRENT_ORIGIN;
+	ent->s.pos.trType		= TR_STATIONARY;
+	ent->s.apos.trType		= TR_STATIONARY;
+	ent->health_			= availableVehicles[vehIdx].maxhealth;
+	ent->takedamage_		= true;
+	ent->setDie( new Die_MiscVehicle );
+	ent->setPain( new Pain_MiscVehicle );
+	ent->score_				= 1;
+	ent->r.contents			= CONTENTS_SOLID;
+	ent->clipmask_			= MASK_PLAYERSOLID;
+	ent->idxScriptBegin_	= ent->idxScriptEnd_ = -1;
+
+	SV_LinkEntity( ent );
+
+	Com_Printf( "Mission: spawned vehicle '%s' (idx %d)\n", availableVehicles[vehIdx].modelName, vehIdx );
+	return ent;
+}
+
+GameEntity* G_SpawnMissionGroundInstallation( int giIdx, int team, vec3_t origin, vec3_t angles )
+{
+	if( giIdx < 0 || giIdx >= bg_numberOfGroundInstallations )
+	{
+		Com_Printf( S_COLOR_RED "G_SpawnMissionGroundInstallation: GI index %d out of range\n", giIdx );
+		return NULL;
+	}
+
+	GameEntity* ent = theLevel.spawnEntity();		// already init'd with a valid number
+	ent->classname_		= "misc_vehicle";
+	ent->client_		= NULL;
+	ent->s.eType		= ET_MISC_VEHICLE;
+	ent->s.modelindex	= 255;						// 255 here = "a ground installation"
+	ent->s.modelindex2	= giIdx;
+
+	if( g_gametype.integer >= GT_TEAM &&
+		( team == ClientBase::TEAM_RED || team == ClientBase::TEAM_BLUE ) )
+		ent->s.generic1 = team;
+
+	VectorCopy( availableGroundInstallations[giIdx].mins, ent->r.mins );
+	VectorCopy( availableGroundInstallations[giIdx].maxs, ent->r.maxs );
+
+	VectorCopy( origin, ent->s.origin );
+	VectorCopy( angles, ent->s.angles );
+	G_SetOrigin( ent, origin );
+	VectorCopy( angles, ent->s.apos.trBase );
+
+	ent->s.groundEntityNum	= ENTITYNUM_NONE;
+	ent->r.svFlags			= SVF_USE_CURRENT_ORIGIN;
+	ent->s.pos.trType		= TR_STATIONARY;
+	ent->s.apos.trType		= TR_STATIONARY;
+	ent->health_			= availableGroundInstallations[giIdx].maxhealth;
+	ent->takedamage_		= true;
+	ent->setDie( new Die_MiscVehicle );
+	ent->setPain( new Pain_MiscVehicle );
+	ent->score_				= 1;
+	ent->r.contents			= CONTENTS_SOLID;
+	ent->clipmask_			= MASK_PLAYERSOLID;
+	ent->idxScriptBegin_	= ent->idxScriptEnd_ = -1;
+
+	// weapon / ammo and the AI brain that scans, tracks and fires
+	ent->s.weaponIndex		= availableGroundInstallations[giIdx].weapon;
+	ent->count_				= availableGroundInstallations[giIdx].ammo;
+	ent->s.eFlags			|= EF_PILOT_ONBOARD;
+	ent->s.ONOFF			= OO_RADAR;
+	ent->gi_nextScanTime_	= theLevel.time_ + 1500;
+	ent->gi_reloadTime_		= theLevel.time_ + availableGroundInstallations[giIdx].reloadTime;
+	ent->setThink( new Think_GroundInstallation );
+	ent->nextthink_			= theLevel.time_ + 1000;
+
+	SV_LinkEntity( ent );
+
+	Com_Printf( "Mission: spawned ground installation '%s' (idx %d)\n",
+		availableGroundInstallations[giIdx].descriptiveName, giIdx );
+	return ent;
+}
 

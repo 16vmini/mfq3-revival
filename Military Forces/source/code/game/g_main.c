@@ -407,8 +407,8 @@ void G_InitGame( int levelTime, int randomSeed )
 
 	if( g_gametype.integer != GT_MISSION_EDITOR )
 	{
-		// MFQ3 mission scripts
-		//G_LoadMissionScripts();
+		// MFQ3 mission scripts (revived server-side spawner)
+		G_LoadMissionScripts();
 
 		// init some MFQ3 stuff
 		//DroneInit();

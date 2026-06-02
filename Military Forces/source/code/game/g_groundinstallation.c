@@ -3,6 +3,9 @@
 */
 
 #include "g_local.h"
+#include "g_entity.h"
+#include "g_level.h"
+#include "g_mfq3ents.h"
 
 //
 //static void loselock( gentity_t* ent )
@@ -247,4 +250,237 @@
 //	ent->s.pos.trTime = level.time;
 //	SV_LinkEntity (&ent->s, &ent->r);
 //}
+
+
+//==================================================================
+// MFQ3 mission revival
+//
+// The code above is the original (gentity_t / function-pointer)
+// ground-installation AI, kept for reference. Below is the same
+// behaviour ported to the C++ GameEntity API and re-activated for
+// the single-player mission MVP.
+//==================================================================
+
+// drop our current radar lock (and clear the "being locked" flag on the victim)
+static void GI_loselock( GameEntity* ent )
+{
+	if( ent->tracktarget_ && ent->tracktarget_->client_ )
+		ent->tracktarget_->client_->ps_.stats[STAT_LOCKINFO] &= ~LI_BEING_LOCKED;
+
+	ent->locktime_			= 0;
+	ent->tracktarget_		= NULL;
+	ent->s.tracktarget		= ENTITYNUM_NONE;
+	ent->gi_nextScanTime_	= theLevel.time_ + 1500;
+	ent->gi_reloadTime_		= theLevel.time_ + availableGroundInstallations[ent->s.modelindex2].reloadTime;
+}
+
+// find / validate a target (planes & helos within radar range and line of sight)
+static void GI_updateTargets( GameEntity* ent )
+{
+	vec3_t			mins, maxs, rangevec, dir;
+	float			range = (float)availableGroundInstallations[ent->s.modelindex2].radarRange;
+	int				i, num, touch[MAX_GENTITIES];
+	GameEntity		*hit, *best = NULL;
+	float			dist, closest = 999999;
+	unsigned long	cat;
+	trace_t			tr;
+
+	// only weapons that can engage aircraft
+	if( ent->count_ > 0 &&
+		ent->s.weaponIndex > -1 &&
+		(	( availableWeapons[ent->s.weaponIndex].type == WT_ANTIAIRMISSILE )
+			|| ( availableWeapons[ent->s.weaponIndex].type == WT_FLAK )
+			|| ( availableWeapons[ent->s.weaponIndex].type == WT_MACHINEGUN )
+		) )
+	{
+		// no target yet -> periodic scan
+		if( !ent->tracktarget_ )
+		{
+			if( theLevel.time_ > ent->gi_nextScanTime_ )
+			{
+				ent->gi_nextScanTime_ = theLevel.time_ + 1500;
+				VectorSet( rangevec, range, range, range );
+				VectorSubtract( ent->r.currentOrigin, rangevec, mins );
+				VectorAdd( ent->r.currentOrigin, rangevec, maxs );
+				num = SV_AreaEntities( mins, maxs, touch, MAX_GENTITIES );
+
+				for( i = 0; i < num; i++ )
+				{
+					hit = theLevel.getEntity( touch[i] );
+					if( !hit->inuse_ || hit->health_ <= 0 ) continue;
+
+					// determine category of the candidate
+					if( hit->s.eType == ET_VEHICLE && hit->client_ )
+						cat = availableVehicles[hit->client_->vehicle_].cat;
+					else if( hit->s.eType == ET_MISC_VEHICLE && hit->s.modelindex < 255 )
+						cat = availableVehicles[hit->s.modelindex].cat;
+					else
+						continue;
+
+					if( !(cat & CAT_PLANE) && !(cat & CAT_HELO) ) continue;
+
+					// line of sight
+					SV_Trace( &tr, ent->r.currentOrigin, 0, 0, hit->r.currentOrigin, ent->s.number, MASK_PLAYERSOLID, false );
+					if( tr.fraction < 1 && tr.entityNum != hit->s.number ) continue;
+
+					VectorSubtract( hit->r.currentOrigin, ent->r.currentOrigin, dir );
+					dist = VectorNormalize( dir );
+					if( !best || dist < closest )
+					{
+						best = hit;
+						closest = dist;
+					}
+				}
+
+				if( best )
+				{
+					ent->gi_lockangle_ = (float)acos( (double)availableWeapons[ent->s.weaponIndex].lockcone );
+					ent->gi_lockangle_ = RAD2DEG( ent->gi_lockangle_ );
+					ent->tracktarget_ = best;
+					ent->locktime_ = theLevel.time_;
+					ent->s.tracktarget = best->s.number;
+					if( ent->tracktarget_->client_ )
+						ent->tracktarget_->client_->ps_.stats[STAT_LOCKINFO] |= LI_BEING_LOCKED;
+				}
+				else
+					ent->tracktarget_ = NULL;
+			}
+		}
+		// have a target -> keep it valid
+		else
+		{
+			if( !ent->tracktarget_->inuse_ || ent->tracktarget_->health_ <= 0 ) { GI_loselock(ent); return; }
+			if( ent->count_ <= 0 ) { GI_loselock(ent); return; }
+
+			VectorSubtract( ent->tracktarget_->r.currentOrigin, ent->r.currentOrigin, dir );
+			if( VectorLength(dir) > range ) { GI_loselock(ent); return; }
+
+			SV_Trace( &tr, ent->r.currentOrigin, 0, 0, ent->tracktarget_->r.currentOrigin, ent->s.number, MASK_PLAYERSOLID, false );
+			if( tr.fraction < 1 && tr.entityNum != ent->tracktarget_->s.number ) { GI_loselock(ent); return; }
+		}
+	}
+	else if( ent->tracktarget_ )
+	{
+		GI_loselock( ent );
+	}
+}
+
+void Think_GroundInstallation::execute()
+{
+	GameEntity*	ent = self_;
+	float		diff, turnspeed;
+	float		timediff = (float)( theLevel.time_ - ent->s.pos.trTime );
+	vec3_t		targdir, targangles;
+	int			locktime;
+
+	GI_updateTargets( ent );
+
+	if( ent->tracktarget_ )
+	{
+		VectorSubtract( ent->tracktarget_->r.currentOrigin, ent->r.currentOrigin, targdir );
+		vectoangles( targdir, targangles );
+		targangles[1] -= 90;
+
+		// clamp target angles
+		if( targangles[1] >= 360 ) targangles[1] -= 360;
+		else if( targangles[1] < 0 ) targangles[1] += 360;
+		if( targangles[0] < 90 &&
+			targangles[0] > availableGroundInstallations[ent->s.modelindex2].minpitch )
+			targangles[0] = availableGroundInstallations[ent->s.modelindex2].minpitch;
+		else if( targangles[0] > 270 &&
+			targangles[0] < availableGroundInstallations[ent->s.modelindex2].maxpitch )
+			targangles[0] = availableGroundInstallations[ent->s.modelindex2].maxpitch;
+
+		// turn the turret toward the target
+		diff = targangles[1] - ent->s.angles2[ROLL];
+		if( diff > 180 ) diff -= 360;
+		else if( diff < -180 ) diff += 360;
+		turnspeed = availableGroundInstallations[ent->s.modelindex2].turnspeed[1] * timediff / 1000;
+		if( turnspeed < (float)fabs( diff ) )
+		{
+			if( diff > 0 ) ent->s.angles2[ROLL] += turnspeed;
+			else           ent->s.angles2[ROLL] -= turnspeed;
+		}
+		else
+			ent->s.angles2[ROLL] = targangles[1];
+
+		// aimed closely enough -> try to fire
+		if( diff <= ent->gi_lockangle_ )
+		{
+			if( ent->tracktarget_->client_ )
+			{
+				if( ent->tracktarget_->client_->ps_.ONOFF & OO_RADAR )
+					locktime = availableWeapons[ent->s.weaponIndex].lockdelay / 2;
+				else
+					locktime = availableWeapons[ent->s.weaponIndex].lockdelay;
+			}
+			else
+			{
+				if( ent->s.ONOFF & OO_RADAR )
+					locktime = availableWeapons[ent->s.weaponIndex].lockdelay / 2;
+				else
+					locktime = availableWeapons[ent->s.weaponIndex].lockdelay;
+			}
+			if( theLevel.time_ > ent->locktime_ + locktime &&
+				Distance( ent->r.currentOrigin, ent->tracktarget_->r.currentOrigin ) <= availableWeapons[ent->s.weaponIndex].range )
+			{
+				FireWeapon_GI( ent );
+				ent->locktime_ = theLevel.time_ + availableWeapons[ent->s.weaponIndex].fireInterval;
+			}
+		}
+		else
+			ent->locktime_ = theLevel.time_;
+	}
+	else if( theLevel.time_ > ent->gi_reloadTime_ &&
+			 ent->count_ < (int)availableGroundInstallations[ent->s.modelindex2].ammo )
+	{
+		ent->count_++;
+		ent->gi_reloadTime_ = theLevel.time_ + availableGroundInstallations[ent->s.modelindex2].reloadTime;
+	}
+
+	ent->nextthink_ = theLevel.time_ + 50;
+	ent->s.pos.trTime = theLevel.time_;
+	SV_LinkEntity( ent );
+}
+
+// Shared death handler for mission vehicles and ground installations.
+void Die_MiscVehicle::execute( GameEntity* inflictor, GameEntity* attacker, int damage, int meansOfDeath )
+{
+	GameEntity*	self = self_;
+	vec3_t		pos;
+
+	// release any radar lock we were holding (ground installations)
+	if( self->tracktarget_ && self->tracktarget_->client_ )
+		self->tracktarget_->client_->ps_.stats[STAT_LOCKINFO] &= ~LI_BEING_LOCKED;
+
+	// award score to the killer
+	if( self->score_ && attacker && attacker->client_ )
+	{
+		int score;
+		VectorAdd( self->r.absmin, self->r.absmax, pos );
+		VectorScale( pos, 0.5f, pos );
+		if( g_gametype.integer >= GT_TEAM )
+		{
+			if( self->s.generic1 == attacker->client_->ps_.persistant[PERS_TEAM] )
+				score = -self->score_;
+			else
+				score = self->score_;
+		}
+		else
+			score = self->score_;
+
+		AddScore( attacker, pos, score );
+	}
+
+	ExplodeVehicle( self );
+	self->freeAfterEvent_ = true;
+
+	G_RadiusDamage( self->r.currentOrigin, self, 150, 150, self, MOD_VEHICLEEXPLOSION, CAT_ANY );
+
+	// mission objective bookkeeping
+	if( self->flags_ & FL_MISSION_TARGET )
+		G_MissionTargetDestroyed( self );
+
+	SV_LinkEntity( self );
+}
 

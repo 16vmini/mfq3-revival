@@ -35,6 +35,7 @@
 #define FL_DROPPED_ITEM			0x00001000
 #define FL_NO_BOTS				0x00002000	// spawn point not for bot use
 #define FL_NO_HUMANS			0x00004000	// spawn point just for bots
+#define FL_MISSION_TARGET		0x00008000	// MFQ3: entity counts toward a mission objective
 
 #define CS_NOKILL				0x00000001
 #define CS_LASTPOS				0x00000002
@@ -664,7 +665,12 @@ void Boat_Pain( GameEntity *self, GameEntity *attacker, int damage );
 // MFQ3
 //
 //void DroneInit();
-//void G_LoadMissionScripts();
+// MFQ3 missions: server-side spawner (revived). Mission entities come from
+// .mis files (in-game editor output), not from the compiled BSP.
+void G_LoadMissionScripts();
+GameEntity* G_SpawnMissionVehicle( int vehIdx, int team, vec3_t origin, vec3_t angles );
+GameEntity* G_SpawnMissionGroundInstallation( int giIdx, int team, vec3_t origin, vec3_t angles );
+void G_MissionTargetDestroyed( GameEntity* target );
 //void SP_misc_vehicle (GameEntity *ent);
 //void SP_misc_groundinstallation (GameEntity *ent);
 
