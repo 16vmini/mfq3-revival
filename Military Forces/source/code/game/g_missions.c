@@ -224,7 +224,7 @@ void G_MissionRunIntermission( void )
 			continue;
 		if( p->client_->pers_.connected_ != GameClient::ClientPersistant::CON_CONNECTED )
 			continue;
-		if( p->client_->pers_.cmd_.buttons & BUTTON_ATTACK )
+		if( p->client_->pers_.cmd_.buttons & ( BUTTON_ATTACK | BUTTON_ATTACK_MAIN ) )
 		{
 			Com_Printf( "Mission: restart requested -> map_restart\n" );
 			Cbuf_ExecuteText( EXEC_APPEND, "map_restart 0\n" );

@@ -748,9 +748,6 @@ void CalculateRanks()
 	// if we are at the intermission, send the New info to everyone
 	if( theLevel.intermissiontime_ )
 		SendScoreboardMessageToAllClients();
-
-	// MFQ3 missions: FIRE on the end screen restarts the mission
-	G_MissionRunIntermission();
 }
 
 
@@ -1717,6 +1714,9 @@ void G_RunFrame( int levelTime )
 
 	// see if it is time to end the level
 	CheckExitRules();
+
+	// MFQ3 missions: FIRE on the end screen restarts the mission
+	G_MissionRunIntermission();
 
 	// update to team status?
 	CheckTeamStatus();
