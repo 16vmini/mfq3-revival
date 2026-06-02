@@ -499,6 +499,11 @@ static void CG_ServerCommand( void ) {
 		return;
 	}
 
+	if ( !strcmp( cmd, "mission_complete" ) ) {		// MFQ3 missions
+		CG_MissionComplete_Set( atoi( CG_Argv(1) ), atoi( CG_Argv(2) ), atoi( CG_Argv(3) ) );
+		return;
+	}
+
 	if ( !strcmp( cmd, "cs" ) ) {
 		CG_ConfigStringModified();
 		return;

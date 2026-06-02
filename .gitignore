@@ -31,3 +31,6 @@ Thumbs.db
 *.user
 *.suo
 /mfq3-ioq3/
+
+# Mission worktree local test homepath (logs, screenshots, saved .mis)
+/playhome/

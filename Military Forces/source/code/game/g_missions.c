@@ -18,8 +18,10 @@
 
 
 // --- mission objective state (server-side) --------------------------
-static int	s_missionTargetsTotal		= 0;
+static int	s_missionTargetsTotal		= 0;	// primary objectives (SAM sites)
 static int	s_missionTargetsRemaining	= 0;
+static int	s_missionBonusTotal			= 0;	// secondary/bonus targets (vehicles)
+static int	s_missionBonusDestroyed		= 0;
 static bool	s_missionComplete			= false;
 
 
@@ -79,6 +81,8 @@ void G_LoadMissionScripts()
 
 	s_missionTargetsTotal		= 0;
 	s_missionTargetsRemaining	= 0;
+	s_missionBonusTotal			= 0;
+	s_missionBonusDestroyed		= 0;
 	s_missionComplete			= false;
 
 	memset( &overview, 0, sizeof(overview) );
@@ -103,13 +107,18 @@ void G_LoadMissionScripts()
 	if( !G_LoadOverviewAndEntities( filename, &overview, vehicles, installations ) )
 		return;
 
-	// spawn mission vehicles (parked props / future drones)
+	// spawn mission vehicles - secondary/bonus targets (extra points, not required)
 	for( i = 0; i < IGME_MAX_VEHICLES/4; ++i )
 	{
 		if( !vehicles[i].used ) break;
-		if( G_SpawnMissionVehicle( vehicles[i].index, vehicles[i].team,
-				vehicles[i].origin, vehicles[i].angles ) )
+		GameEntity* v = G_SpawnMissionVehicle( vehicles[i].index, vehicles[i].team,
+				vehicles[i].origin, vehicles[i].angles );
+		if( v )
+		{
 			spawned++;
+			v->flags_ |= FL_MISSION_BONUS;
+			s_missionBonusTotal++;
+		}
 	}
 
 	// spawn ground installations; every one is a destroy-objective target
@@ -151,12 +160,26 @@ void G_MissionTargetDestroyed( GameEntity* target )
 		return;
 	}
 
-	// all objectives destroyed -> mission complete
+	// all primary objectives destroyed -> mission complete
 	s_missionComplete = true;
+	// tell the client to show the Mission Complete screen (primary, bonusDone, bonusTotal)
+	SV_GameSendServerCommand( -1, va( "mission_complete %d %d %d",
+		s_missionTargetsTotal, s_missionBonusDestroyed, s_missionBonusTotal ) );
 	SV_GameSendServerCommand( -1, "cp \"Mission complete!\n\"" );
-	Com_Printf( S_COLOR_GREEN "Mission complete - all objectives destroyed.\n" );
+	Com_Printf( S_COLOR_GREEN "Mission complete - %d/%d primary destroyed, %d/%d bonus destroyed.\n",
+		s_missionTargetsTotal, s_missionTargetsTotal, s_missionBonusDestroyed, s_missionBonusTotal );
 
 	// end the level via the standard intermission flow
 	if( !theLevel.intermissiontime_ )
 		BeginIntermission();
+}
+
+// Called from Die_MiscVehicle when an FL_MISSION_BONUS entity is destroyed.
+void G_MissionBonusDestroyed( GameEntity* target )
+{
+	s_missionBonusDestroyed++;
+	Com_Printf( "Mission: bonus target destroyed (%d/%d).\n",
+		s_missionBonusDestroyed, s_missionBonusTotal );
+	SV_GameSendServerCommand( -1, va( "cp \"Bonus target destroyed!  (%d/%d)\n\"",
+		s_missionBonusDestroyed, s_missionBonusTotal ) );
 }

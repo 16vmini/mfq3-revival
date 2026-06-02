@@ -35,7 +35,8 @@
 #define FL_DROPPED_ITEM			0x00001000
 #define FL_NO_BOTS				0x00002000	// spawn point not for bot use
 #define FL_NO_HUMANS			0x00004000	// spawn point just for bots
-#define FL_MISSION_TARGET		0x00008000	// MFQ3: entity counts toward a mission objective
+#define FL_MISSION_TARGET		0x00008000	// MFQ3: primary objective - must be destroyed to complete
+#define FL_MISSION_BONUS		0x00010000	// MFQ3: secondary/bonus target - extra points, not required
 
 #define CS_NOKILL				0x00000001
 #define CS_LASTPOS				0x00000002
@@ -671,6 +672,7 @@ void G_LoadMissionScripts();
 GameEntity* G_SpawnMissionVehicle( int vehIdx, int team, vec3_t origin, vec3_t angles );
 GameEntity* G_SpawnMissionGroundInstallation( int giIdx, int team, vec3_t origin, vec3_t angles );
 void G_MissionTargetDestroyed( GameEntity* target );
+void G_MissionBonusDestroyed( GameEntity* target );
 //void SP_misc_vehicle (GameEntity *ent);
 //void SP_misc_groundinstallation (GameEntity *ent);
 

@@ -153,7 +153,7 @@ add_library(cgame STATIC
     cgame/cg_event.c         cgame/cg_groundvehicle.c cgame/cg_helo.c
     cgame/cg_info.c          cgame/cg_localents.c     cgame/cg_lqm.c
     cgame/cg_main.c          cgame/cg_marks.c         cgame/cg_miscvehicle.c
-    cgame/cg_missioneditor.c cgame/cg_particles.c     cgame/cg_plane.c
+    cgame/cg_missioneditor.c cgame/cg_missioncomplete.c cgame/cg_particles.c     cgame/cg_plane.c
     cgame/cg_players.c       cgame/cg_playerstate.c   cgame/cg_predict.c
     cgame/cg_scoreboard.c    cgame/cg_servercmds.c    cgame/cg_snapshot.c
     cgame/cg_testmodel.c     cgame/cg_util.c          cgame/cg_vehicle.c

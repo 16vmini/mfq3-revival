@@ -477,9 +477,11 @@ void Die_MiscVehicle::execute( GameEntity* inflictor, GameEntity* attacker, int 
 
 	G_RadiusDamage( self->r.currentOrigin, self, 150, 150, self, MOD_VEHICLEEXPLOSION, CAT_ANY );
 
-	// mission objective bookkeeping
+	// mission bookkeeping: primary objective vs secondary/bonus target
 	if( self->flags_ & FL_MISSION_TARGET )
 		G_MissionTargetDestroyed( self );
+	else if( self->flags_ & FL_MISSION_BONUS )
+		G_MissionBonusDestroyed( self );
 
 	SV_LinkEntity( self );
 }

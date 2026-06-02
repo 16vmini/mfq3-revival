@@ -1962,6 +1962,8 @@ CG_DrawIntermission
 */
 static void CG_DrawIntermission( void )
 {
+	CG_DrawMissionCompleteBanner();		// MFQ3 missions seam: banner over the intermission
+
 	if( cgs.gametype == GT_SINGLE_PLAYER )
 	{
 		CG_DrawCenterString();

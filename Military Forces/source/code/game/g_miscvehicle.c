@@ -616,7 +616,7 @@ GameEntity* G_SpawnMissionVehicle( int vehIdx, int team, vec3_t origin, vec3_t a
 	ent->takedamage_		= true;
 	ent->setDie( new Die_MiscVehicle );
 	ent->setPain( new Pain_MiscVehicle );
-	ent->score_				= 1;
+	ent->score_				= 5;	// bonus/secondary target
 	ent->r.contents			= CONTENTS_SOLID;
 	ent->clipmask_			= MASK_PLAYERSOLID;
 	ent->idxScriptBegin_	= ent->idxScriptEnd_ = -1;
@@ -667,7 +667,7 @@ GameEntity* G_SpawnMissionGroundInstallation( int giIdx, int team, vec3_t origin
 	ent->takedamage_		= true;
 	ent->setDie( new Die_MiscVehicle );
 	ent->setPain( new Pain_MiscVehicle );
-	ent->score_				= 1;
+	ent->score_				= 10;	// primary objective target
 	ent->r.contents			= CONTENTS_SOLID;
 	ent->clipmask_			= MASK_PLAYERSOLID;
 	ent->idxScriptBegin_	= ent->idxScriptEnd_ = -1;
