@@ -1318,10 +1318,10 @@ extern  char teamChat2[256];
 void CG_AddLagometerFrameInfo( void );
 void CG_AddLagometerSnapshotInfo( snapshot_t *snap );
 void CG_CenterPrint( const char *str, int y, int charWidth );
-// MFQ3 missions: "Mission Complete" banner (cg_missioncomplete.c)
-void CG_MissionComplete_Clear( void );
-void CG_MissionComplete_Set( int primary, int bonusDone, int bonusTotal );
-void CG_DrawMissionCompleteBanner( void );
+// MFQ3 missions: end-of-mission banner, COMPLETE/FAILED (cg_missioncomplete.c)
+void CG_MissionEnd_Clear( void );
+void CG_MissionEnd_Set( bool success, int primaryDone, int primaryTotal, int bonusDone, int bonusTotal );
+void CG_DrawMissionEndBanner( void );
 void CG_DrawActive( stereoFrame_t stereoView );
 void CG_DrawFlagModel( float x, float y, float w, float h, int team, bool force2D );
 void CG_DrawTeamBackground( int x, int y, int w, int h, float alpha, int team );

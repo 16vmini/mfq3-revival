@@ -23,6 +23,7 @@ static int	s_missionTargetsRemaining	= 0;
 static int	s_missionBonusTotal			= 0;	// secondary/bonus targets (vehicles)
 static int	s_missionBonusDestroyed		= 0;
 static bool	s_missionComplete			= false;
+static bool	s_missionFailed				= false;
 
 
 // map a .mis team string ("red"/"blue"/"?") to a team id, -1 = none
@@ -84,6 +85,7 @@ void G_LoadMissionScripts()
 	s_missionBonusTotal			= 0;
 	s_missionBonusDestroyed		= 0;
 	s_missionComplete			= false;
+	s_missionFailed				= false;
 
 	memset( &overview, 0, sizeof(overview) );
 	memset( vehicles, 0, sizeof(vehicles) );
@@ -146,7 +148,7 @@ void G_LoadMissionScripts()
 // Called from Die_MiscVehicle when an FL_MISSION_TARGET entity is destroyed.
 void G_MissionTargetDestroyed( GameEntity* target )
 {
-	if( s_missionComplete )
+	if( s_missionComplete || s_missionFailed )
 		return;
 
 	if( s_missionTargetsRemaining > 0 )
@@ -162,12 +164,35 @@ void G_MissionTargetDestroyed( GameEntity* target )
 
 	// all primary objectives destroyed -> mission complete
 	s_missionComplete = true;
-	// tell the client to show the Mission Complete screen (primary, bonusDone, bonusTotal)
-	SV_GameSendServerCommand( -1, va( "mission_complete %d %d %d",
-		s_missionTargetsTotal, s_missionBonusDestroyed, s_missionBonusTotal ) );
+	// mission_end <success> <primaryDone> <primaryTotal> <bonusDone> <bonusTotal>
+	SV_GameSendServerCommand( -1, va( "mission_end 1 %d %d %d %d",
+		s_missionTargetsTotal, s_missionTargetsTotal, s_missionBonusDestroyed, s_missionBonusTotal ) );
 	SV_GameSendServerCommand( -1, "cp \"Mission complete!\n\"" );
 	Com_Printf( S_COLOR_GREEN "Mission complete - %d/%d primary destroyed, %d/%d bonus destroyed.\n",
 		s_missionTargetsTotal, s_missionTargetsTotal, s_missionBonusDestroyed, s_missionBonusTotal );
+
+	// end the level via the standard intermission flow
+	if( !theLevel.intermissiontime_ )
+		BeginIntermission();
+}
+
+// Called when the player's aircraft is destroyed during a single-player mission.
+void G_MissionFailed( void )
+{
+	int primaryDone;
+
+	if( s_missionComplete || s_missionFailed )
+		return;
+	if( s_missionTargetsTotal == 0 )		// no mission loaded -> nothing to fail
+		return;
+
+	s_missionFailed = true;
+	primaryDone = s_missionTargetsTotal - s_missionTargetsRemaining;
+	SV_GameSendServerCommand( -1, va( "mission_end 0 %d %d %d %d",
+		primaryDone, s_missionTargetsTotal, s_missionBonusDestroyed, s_missionBonusTotal ) );
+	SV_GameSendServerCommand( -1, "cp \"MISSION FAILED\n\"" );
+	Com_Printf( S_COLOR_RED "Mission failed - player destroyed (%d/%d primary).\n",
+		primaryDone, s_missionTargetsTotal );
 
 	// end the level via the standard intermission flow
 	if( !theLevel.intermissiontime_ )

@@ -69,6 +69,10 @@ void ExplodeVehicle( GameEntity* self )
 
 		// prevent early respawn (1.5 seconds lock-out)
 		self->client_->respawnTime_ = theLevel.time_ + 1500;
+
+		// MFQ3 missions: a human player dying in a single-player mission fails it
+		if( g_gametype.integer == GT_SINGLE_PLAYER && !(self->r.svFlags & SVF_BOT) )
+			G_MissionFailed();
 	}
 }
 

@@ -673,6 +673,7 @@ GameEntity* G_SpawnMissionVehicle( int vehIdx, int team, vec3_t origin, vec3_t a
 GameEntity* G_SpawnMissionGroundInstallation( int giIdx, int team, vec3_t origin, vec3_t angles );
 void G_MissionTargetDestroyed( GameEntity* target );
 void G_MissionBonusDestroyed( GameEntity* target );
+void G_MissionFailed( void );
 //void SP_misc_vehicle (GameEntity *ent);
 //void SP_misc_groundinstallation (GameEntity *ent);
 
