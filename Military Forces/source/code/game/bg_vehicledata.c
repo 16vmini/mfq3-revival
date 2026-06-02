@@ -3112,10 +3112,8 @@ completeVehicleData_t availableVehicles[] =
 	{0, 0, 0},					// mins (bounding box) - SET AUTOMATICALLY
 	{0, 0, 0},					// max (bounding box) - SET AUTOMATICALLY
 	{50, 125, 70},				// turnspeed around the three axis
-	//{0, 0, 0},					// camera distance {min,max,default}
-	//{2.5, 2.5, 2.5},					// camera height {min,max,default}
-	{0, 10, 0},					// camera distance {min,max,default}
-	{0, 10, 2.5},					// camera height {min,max,default}
+	{0, 80, 25},				// camera distance {min,max,default} - MFQ3 third-person for the soldier
+	{0, 40, 12},				// camera height {min,max,default}
 	0,							// stallspeed
 	80,							// maxspeed
 	0,							// min throttle
@@ -3163,10 +3161,8 @@ completeVehicleData_t availableVehicles[] =
 	{0, 0, 0},					// mins (bounding box) - SET AUTOMATICALLY
 	{0, 0, 0},					// max (bounding box) - SET AUTOMATICALLY
 	{50, 125, 70},				// turnspeed around the three axis
-	//{0, 0, 0},					// camera distance {min,max,default}
-	//{2.5, 2.5, 2.5},					// camera height {min,max,default}
-	{0, 10, 0},					// camera distance {min,max,default}
-	{0, 10, 2.5},					// camera height {min,max,default}
+	{0, 80, 25},				// camera distance {min,max,default} - MFQ3 third-person for the soldier
+	{0, 40, 12},				// camera height {min,max,default}
 	0,							// stallspeed
 	80,							// maxspeed
 	0,							// min throttle

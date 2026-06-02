@@ -943,6 +943,7 @@ void CG_DrawLQM(DrawInfo_LQM_t* drawInfo)
 	if(_dbg) Com_Printf( "DrawLQMtrace: head added; weaponIndex=%d (numWeapons check)\n", drawInfo->weaponIndex );
 
 	// Add Weapon
+	if(_dbg) Com_Printf( "DrawLQMtrace: pre-weapon (weaponIndex=%d)\n", drawInfo->weaponIndex );
 	part[BP_LQM_MAX_PARTS].hModel = availableWeapons[drawInfo->weaponIndex].modelHandle;
 	VectorCopy( drawInfo->basicInfo.origin, part[BP_LQM_MAX_PARTS].lightingOrigin );
 	AxisCopy( axisDefault , part[BP_LQM_MAX_PARTS].axis); 
@@ -950,6 +951,7 @@ void CG_DrawLQM(DrawInfo_LQM_t* drawInfo)
 	part[BP_LQM_MAX_PARTS].shadowPlane = shadowPlane;
 	part[BP_LQM_MAX_PARTS].renderfx = renderfx;
 	refExport.AddRefEntityToScene( &part[BP_LQM_MAX_PARTS] );
+	if(_dbg) Com_Printf( "DrawLQMtrace: weapon added; CG_DrawLQM complete\n" );
 
 	// muzzleflash
 	if( drawInfo->basicInfo.drawMuzzleFlash ) {

@@ -671,6 +671,14 @@ void CG_DrawActiveFrame( int serverTime, stereoFrame_t stereoView, bool demoPlay
 
 	// decide on third person view
 	cg.renderingThirdPerson = cg_thirdPerson.integer || (cg.snap->ps.stats[STAT_HEALTH] <= 0);
+	// MFQ3: force third person for the infantry soldier (LQM = in a vehicle with cg_vehicle unset)
+	// so the little guy is visible, with a sensible chase-cam distance.
+	if( cg.snap->ps.pm_type == PM_VEHICLE && cg_vehicle.integer < 0 )
+	{
+		cg.renderingThirdPerson = true;
+		cg_thirdPersonRange.value = 30.0f;
+		cg_thirdPersonHeight.value = 12.0f;
+	}
 
 	// build cg.refdef
 	inwater = CG_CalcViewValues();

@@ -2190,7 +2190,8 @@ static void CG_Draw2D_MFQ3( void ) {
 	}
 
 	// are we in spectator mode, or awaiting vehicle selection?
-	if( cg.snap->ps.persistant[PERS_TEAM] == ClientBase::TEAM_SPECTATOR || cg_vehicle.integer == -1 )
+	if( cg.snap->ps.persistant[PERS_TEAM] == ClientBase::TEAM_SPECTATOR ||
+		( cg_vehicle.integer == -1 && cg.snap->ps.pm_type != PM_VEHICLE ) )	// MFQ3: in a vehicle (e.g. LQM) -> no select overlay even if cg_vehicle cvar is stale
 	{
 		CG_DrawSpectator();
 //		CG_DrawCrosshair();
@@ -2203,29 +2204,40 @@ static void CG_Draw2D_MFQ3( void ) {
 			 cg.snap->ps.stats[STAT_HEALTH] > 0 &&
 			 !(cg.snap->ps.pm_flags & PMF_VEHICLESELECT) )
 		{
-			// old or New HUD?
-			if( cg_oldHUD.integer )
+			// MFQ3: the LQM soldier (in a vehicle, but cg_vehicle unset = -1) has no
+			// throttle/fuel/vehicle gauges; the vehicle status bar reads vehicle-only data
+			// and crashes for it, so skip it.
+			bool isLQM = ( cg.snap->ps.pm_type == PM_VEHICLE && cg_vehicle.integer < 0 );
+			if( !isLQM )
 			{
-				CG_DrawStatusBar_MFQ3();
-			}
-			else
-			{
-      			CG_DrawStatusBar_MFQ3_new();
+				// old or New HUD?
+				if( cg_oldHUD.integer )
+				{
+					CG_DrawStatusBar_MFQ3();
+				}
+				else
+				{
+	      			CG_DrawStatusBar_MFQ3_new();
+				}
 			}
 
 //			CG_DrawCrosshair();
+			{ static int t1=0; if(t1++<1) Com_Printf("Draw2Dtrace: pre-CrosshairNames\n"); }
 			CG_DrawCrosshairNames();
+			{ static int t2=0; if(t2++<1) Com_Printf("Draw2Dtrace: post-CrosshairNames\n"); }
 //			CG_DrawReward();
 		}
-    
+
 	}
 
 	CG_DrawVote();
 	CG_DrawTeamVote();
 
+	{ static int t3=0; if(t3++<1) Com_Printf("Draw2Dtrace: pre-UpperLeft\n"); }
 	CG_DrawUpperLeft();
-
+	{ static int t4=0; if(t4++<1) Com_Printf("Draw2Dtrace: pre-UpperRight\n"); }
 	CG_DrawUpperRight( false );
+	{ static int t5=0; if(t5++<1) Com_Printf("Draw2Dtrace: post-UpperRight\n"); }
 
 	if( !CG_DrawFollow() )
 	{
