@@ -674,6 +674,7 @@ GameEntity* G_SpawnMissionGroundInstallation( int giIdx, int team, vec3_t origin
 void G_MissionTargetDestroyed( GameEntity* target );
 void G_MissionBonusDestroyed( GameEntity* target );
 void G_MissionFailed( void );
+void G_MissionRunIntermission( void );
 //void SP_misc_vehicle (GameEntity *ent);
 //void SP_misc_groundinstallation (GameEntity *ent);
 

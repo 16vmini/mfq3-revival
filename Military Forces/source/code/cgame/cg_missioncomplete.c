@@ -36,9 +36,11 @@ void CG_MissionEnd_Set( bool success, int primaryDone, int primaryTotal, int bon
 	s_meActive		= true;
 }
 
-void CG_DrawMissionEndBanner( void )
+// returns true if the banner is active (so the caller can skip the normal
+// intermission scoreboard / center string and show only this)
+bool CG_DrawMissionEndBanner( void )
 {
-	vec4_t		backdrop = { 0.0f, 0.0f, 0.0f, 0.55f };
+	vec4_t		backdrop = { 0.0f, 0.0f, 0.0f, 0.65f };
 	vec4_t		green    = { 0.2f, 1.0f, 0.3f, 1.0f };
 	vec4_t		red      = { 1.0f, 0.25f, 0.2f, 1.0f };
 	char		line[80];
@@ -46,12 +48,12 @@ void CG_DrawMissionEndBanner( void )
 	int			y = 56;
 
 	if( !s_meActive )
-		return;
+		return false;
 
 	title = s_meSuccess ? "MISSION COMPLETE" : "MISSION FAILED";
 
-	// dark band behind the banner
-	CG_FillRect( 0, (float)(y - 12), SCREEN_WIDTH, 110, backdrop );
+	// full-screen dim so the FFA scoreboard behind it doesn't bleed through
+	CG_FillRect( 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, backdrop );
 
 	// centered title, green for success / red for failure
 	CG_DrawBigStringColor( (SCREEN_WIDTH - (int)strlen(title) * BIGCHAR_WIDTH) / 2, y,
@@ -66,4 +68,13 @@ void CG_DrawMissionEndBanner( void )
 	// bonus targets
 	Com_sprintf( line, sizeof(line), "Bonus targets  %d / %d", s_meBonusDone, s_meBonusTotal );
 	CG_DrawBigStringColor( (SCREEN_WIDTH - (int)strlen(line) * BIGCHAR_WIDTH) / 2, y, line, colorWhite );
+	y += BIGCHAR_HEIGHT + 24;
+
+	// restart prompt
+	{
+		const char* hint = "Press FIRE to restart mission";
+		CG_DrawBigStringColor( (SCREEN_WIDTH - (int)strlen(hint) * BIGCHAR_WIDTH) / 2, y, hint, colorYellow );
+	}
+
+	return true;
 }

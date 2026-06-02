@@ -1962,7 +1962,8 @@ CG_DrawIntermission
 */
 static void CG_DrawIntermission( void )
 {
-	CG_DrawMissionEndBanner();		// MFQ3 missions seam: COMPLETE/FAILED banner over the intermission
+	if( CG_DrawMissionEndBanner() )		// MFQ3 missions seam: COMPLETE/FAILED screen
+		return;							// shown -> skip the normal scoreboard / center string
 
 	if( cgs.gametype == GT_SINGLE_PLAYER )
 	{

@@ -221,9 +221,11 @@ VehicleDeathImpl( GameEntity* self, GameEntity* inflictor, GameEntity* attacker,
 		self->client_->respawnTime_ = theLevel.time_ + 30000;
 	}
 
-	// MFQ3 missions: any human player death in a single-player mission fails it
-	// (covers both the gib and the soft-crash "wreck" paths above)
-	if( g_gametype.integer == GT_SINGLE_PLAYER && !(self->r.svFlags & SVF_BOT) )
+	// MFQ3 missions: any human player death fails an active mission.
+	// (G_MissionFailed no-ops when no mission is loaded, so this is safe in
+	//  plain FFA too; not gated on gametype because g_gametype can be forced
+	//  back to FFA by the archived config even when running a mission.)
+	if( !(self->r.svFlags & SVF_BOT) )
 		G_MissionFailed();
 
 	SV_LinkEntity( self );

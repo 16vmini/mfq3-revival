@@ -199,6 +199,40 @@ void G_MissionFailed( void )
 		BeginIntermission();
 }
 
+// Called every server frame. At a mission end screen (complete or failed),
+// a human pressing FIRE restarts the mission. This replaces the gametype-
+// dependent intermission exit (which never fires in single-player and needs
+// an unintuitive "ready-up" in FFA).
+void G_MissionRunIntermission( void )
+{
+	int i;
+
+	if( !s_missionComplete && !s_missionFailed )
+		return;
+	if( !theLevel.intermissiontime_ )
+		return;
+	// let the player read the screen for a moment before FIRE counts
+	if( theLevel.time_ < theLevel.intermissiontime_ + 2000 )
+		return;
+
+	for( i = 0; i < theLevel.maxclients_; i++ )
+	{
+		GameEntity* p = theLevel.getEntity( i );
+		if( !p || !p->client_ )
+			continue;
+		if( p->r.svFlags & SVF_BOT )
+			continue;
+		if( p->client_->pers_.connected_ != GameClient::ClientPersistant::CON_CONNECTED )
+			continue;
+		if( p->client_->pers_.cmd_.buttons & BUTTON_ATTACK )
+		{
+			Com_Printf( "Mission: restart requested -> map_restart\n" );
+			Cbuf_ExecuteText( EXEC_APPEND, "map_restart 0\n" );
+			return;
+		}
+	}
+}
+
 // Called from Die_MiscVehicle when an FL_MISSION_BONUS entity is destroyed.
 void G_MissionBonusDestroyed( GameEntity* target )
 {
