@@ -634,6 +634,15 @@ void ClientThink_real( GameEntity *ent )
 	// mark the time, so the connection sprite can be removed
 	usercmd_t	*ucmd = &ent->client_->pers_.cmd_;
 
+	// MFQ3 dev: scripted auto-fire (mf_autoFire) to exercise weapons without a human.
+	// Cycles the selected weapon slot every 1.5s and holds both fire buttons.
+	if( Cvar_VariableIntegerValue( "mf_autoFire" ) && client->vehicle_ >= 0 )
+	{
+		ucmd->buttons |= ( BUTTON_ATTACK | BUTTON_ATTACK_MAIN );
+		ucmd->weapon = ( theLevel.time_ / 1500 ) % 8;
+		client->ps_.ONOFF &= ~( OO_LANDED | OO_STALLED );	// let a grounded test jet fire its main weapons
+	}
+
 	// sanity check the command time to prevent speedup cheating
 	if( ucmd->serverTime > theLevel.time_ + 200 ) 
 	{

@@ -87,9 +87,10 @@ bool LogAccuracyHit( GameEntity* target, GameEntity* attacker )
 FireWeapon
 ===============
 */
-void FireWeapon( GameEntity *ent ) 
+void FireWeapon( GameEntity *ent )
 {
 	ent->client_->accuracy_shots_++;
+	{ static int ft=0; if(ft++<20) Com_Printf( "MFtrace: FireWeapon weaponIndex=%d type=%d\n", ent->s.weaponIndex, availableWeapons[ent->s.weaponIndex].type ); }
 
 	// fire the specific weapon
 	switch( availableWeapons[ent->s.weaponIndex].type ) 

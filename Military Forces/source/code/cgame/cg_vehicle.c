@@ -216,7 +216,7 @@ static void CG_CachePlane(int index)
 
 	// only thing that always has to be there is body
 	if( !availableVehicles[index].handle[BP_PLANE_BODY] ) {
-		Com_Error( ERR_DROP, "MFQ3 Error: Invalid handle for body %s.md3\n", basename );
+		Com_Printf( S_COLOR_YELLOW "MFQ3: missing body model %s.md3 - vehicle will not render (skipped)\n", basename );
 	}
 }
 
@@ -275,7 +275,7 @@ static void CG_CacheGroundVehicle(int index)
 
 	// only thing that always has to be there is body
 	if( !availableVehicles[index].handle[BP_GV_BODY] ) {
-		Com_Error( ERR_DROP, "MFQ3 Error: Invalid handle for body %s.md3\n", basename );
+		Com_Printf( S_COLOR_YELLOW "MFQ3: missing body model %s.md3 - vehicle will not render (skipped)\n", basename );
 	}
 }
 
@@ -326,7 +326,7 @@ static void CG_CacheHelo(int index)
 
 	// only thing that always has to be there is body
 	if( !availableVehicles[index].handle[BP_HELO_BODY] ) {
-		Com_Error( ERR_DROP, "MFQ3 Error: Invalid handle for body %s.md3\n", basename );
+		Com_Printf( S_COLOR_YELLOW "MFQ3: missing body model %s.md3 - vehicle will not render (skipped)\n", basename );
 	}
 }
 
@@ -365,7 +365,7 @@ static void CG_CacheLQM(int index)
 
 	// only thing that always has to be there is body
 	if( !availableVehicles[index].handle[BP_LQM_TORSO] ) {
-		Com_Error( ERR_DROP, "MFQ3 Error: Invalid handle for body %s_torso.md3\n", basename );
+		Com_Printf( S_COLOR_YELLOW "MFQ3: missing body model %s_torso.md3 - vehicle will not render (skipped)\n", basename );
 	}
 
 	// Parse LQM Animations

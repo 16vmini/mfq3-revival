@@ -175,23 +175,28 @@ void MF_ClientBegin( int clientNum )
 	// MFQ3 prepare
 	client->vehicle_ = client->nextVehicle_ = -1;
 
-	// MFQ3 dev: auto-spawn straight as the LQM (Sarge), skipping the menu,
-	// when mf_autoLQM is set. Lets us reproduce/test the infantry without
-	// navigating the team/vehicle menu.
-	if( Cvar_VariableIntegerValue( "mf_autoLQM" ) )
+	// MFQ3 dev: auto-spawn straight into a vehicle, skipping the menu, for testing.
+	//   mf_autoVehicle <index> -> spawn as that vehicle (e.g. a jet to test missiles)
+	//   mf_autoLQM 1           -> spawn as the infantry (LQM)
 	{
-		char	ui[MAX_INFO_STRING];
-		int		v, lqm = -1;
-		for( v = 0; v < bg_numberOfVehicles; v++ )
-			if( availableVehicles[v].cat & CAT_LQM ) { lqm = v; break; }
-		if( lqm >= 0 )
+		char	av[32]; av[0] = 0;
+		Cvar_VariableStringBuffer( "mf_autoVehicle", av, sizeof( av ) );
+		int		spawnVeh = ( av[0] ? atoi( av ) : -1 );
+		if( spawnVeh < 0 && Cvar_VariableIntegerValue( "mf_autoLQM" ) )
 		{
+			int v;
+			for( v = 0; v < bg_numberOfVehicles; v++ )
+				if( availableVehicles[v].cat & CAT_LQM ) { spawnVeh = v; break; }
+		}
+		if( spawnVeh >= 0 && spawnVeh < bg_numberOfVehicles )
+		{
+			char ui[MAX_INFO_STRING];
 			client->sess_.sessionTeam_ = ClientBase::TEAM_RED;
 			SV_GetUserinfo( clientNum, ui, sizeof( ui ) );
-			Info_SetValueForKey( ui, "cg_nextVehicle", va( "%d", lqm ) );
+			Info_SetValueForKey( ui, "cg_nextVehicle", va( "%d", spawnVeh ) );
 			SV_SetUserinfo( clientNum, ui );
 			ClientUserinfoChanged( clientNum );
-			Com_Printf( "MFtrace: mf_autoLQM -> forcing spawn as LQM index %d\n", lqm );
+			Com_Printf( "MFtrace: auto-spawn as vehicle %d (%s)\n", spawnVeh, availableVehicles[spawnVeh].descriptiveName );
 		}
 	}
 
