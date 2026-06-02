@@ -221,6 +221,11 @@ VehicleDeathImpl( GameEntity* self, GameEntity* inflictor, GameEntity* attacker,
 		self->client_->respawnTime_ = theLevel.time_ + 30000;
 	}
 
+	// MFQ3 missions: any human player death in a single-player mission fails it
+	// (covers both the gib and the soft-crash "wreck" paths above)
+	if( g_gametype.integer == GT_SINGLE_PLAYER && !(self->r.svFlags & SVF_BOT) )
+		G_MissionFailed();
+
 	SV_LinkEntity( self );
 }
 
