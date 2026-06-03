@@ -2980,8 +2980,8 @@ completeVehicleData_t availableVehicles[] =
 	160,						// max fuel
 	285,						// max gun pitch (upwards = negative) <- gearheight
 	5,							// min gun pitch (downwards = positive) <- tailangle
-	0, WI_MGT_2X30MM, WI_STINGER, WI_HELLFIRE, 0, 0, 0, WI_CFLARE,// weapons
-	0, 2, 4, 0, 0, 0, 0, 20,	// ammo
+	WI_MGT_2X30MM, WI_STINGER, WI_HELLFIRE, 0, 0, 0, 0, WI_CFLARE,// weapons (MG must be slot 0 / WP_MACHINEGUN to fire)
+	1500, 8, 8, 0, 0, 0, 0, 20,	// ammo
 	1,2,0,0,0,0,0,0,			// turret
 	{0, 0, 10},					// cameraposition for cockpit view
 	0,							// effect model
@@ -3028,8 +3028,8 @@ completeVehicleData_t availableVehicles[] =
 	160,						// max fuel
 	285,						// max gun pitch (upwards = negative) <- gearheight
 	5,							// min gun pitch (downwards = positive) <- tailangle
-	0, WI_MGT_7_62MM, WI_FUELCRATE, WI_HEALTHCRATE, WI_AMMOCRATE, 0, 0, WI_FLARE,// weapons
-	0, 1500, 3, 3, 3, 0, 0, 20,	// ammo
+	WI_MGT_7_62MM, WI_FUELCRATE, WI_HEALTHCRATE, WI_AMMOCRATE, 0, 0, 0, WI_FLARE,// weapons (MG must be slot 0 / WP_MACHINEGUN to fire)
+	1500, 3, 3, 3, 0, 0, 0, 20,	// ammo
 	1,0,0,0,0,0,0,0,			// turret
 	{0, 0, 10},					// cameraposition for cockpit view
 	0,							// effect model
@@ -3047,14 +3047,14 @@ completeVehicleData_t availableVehicles[] =
 	{0,0,0,0}					// shadow orientation adjusters
     },
 
-	{	"RAH-66 Comanche",			// descriptiveName
-	"RAH-66",						// tinyName
-	"comanche",						// modelName
+	{	"Mi-24 Hind",			// descriptiveName
+	"Hind",						// tinyName
+	"hind",						// modelName
 	SHADOW_DEFAULT,				// alpha shadow
 	MF_GAMESET_MODERN,			// id
 	MF_TEAM_2,
 	CAT_HELO,
-	CLASS_HELO_RECON,
+	CLASS_HELO_ATTACK,
 	0,							// flags
 	0,	// capabilities
 	{0,0,0,0,0,0,0,0,0,0},		// handles - SET AUTOMATICALLY
@@ -3076,9 +3076,9 @@ completeVehicleData_t availableVehicles[] =
 	160,						// max fuel
 	285,						// max gun pitch (upwards = negative) <- gearheight
 	5,							// min gun pitch (downwards = positive) <- tailangle
-	0, WI_MGT_7_62MM, WI_FUELCRATE, WI_HEALTHCRATE, WI_AMMOCRATE, 0, 0, WI_FLARE,// weapons
-	0, 1500, 3, 3, 3, 0, 0, 20,	// ammo
-	1,0,0,0,0,0,0,0,			// turret
+	WI_MGT_2X30MM, WI_STINGER, WI_HELLFIRE, 0, 0, 0, 0, WI_CFLARE,// weapons (MG must be slot 0 / WP_MACHINEGUN to fire)
+	1500, 8, 8, 0, 0, 0, 0, 20,	// ammo
+	1,2,0,0,0,0,0,0,			// turret
 	{0, 0, 10},					// cameraposition for cockpit view
 	0,							// effect model
 	8000,						// radar range

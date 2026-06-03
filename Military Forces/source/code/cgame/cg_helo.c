@@ -122,7 +122,7 @@ void CG_Helo( centity_t *cent, clientInfo_t *ci )
 	memset( &drawInfo, 0, sizeof(drawInfo) );
 	drawInfo.basicInfo.vehicleIndex = ci->vehicle;
 	drawInfo.basicInfo.ONOFF = ONOFF;
-		
+
 	// get speed
 	VectorCopy( cent->currentState.pos.trDelta, velocity );
 	drawInfo.basicInfo.speed = VectorLength( velocity );
