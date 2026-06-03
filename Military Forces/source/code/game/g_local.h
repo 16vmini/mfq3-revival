@@ -871,6 +871,7 @@ void UpdateTournamentInfo( void );
 #define MAX_FILEPATH			144
 
 #include "g_team.h" // teamplay specific stuff
+#include "g_bot.h"   // bot AI system
 
 
 //extern	level_locals_t	level;
