@@ -52,7 +52,7 @@ void Bot_Init( void )
 /*
   Bot_SetState — Transition a bot to a new AI state with debug logging.
 */
-void Bot_SetState( botState_t *bs, botState_t newState )
+void Bot_SetState( botState_t *bs, botAIState_t newState )
 {
 	if( !bs || bs->state == newState ) return;
 
@@ -512,10 +512,10 @@ void Bot_Frame( void )
 int Bot_Spawn( int team, int vehicleIndex, vec3_t origin, vec3_t angles )
 {
 	int slot;
+	int clientNum;
 	botState_t *bs;
 	GameEntity *ent;
 	completeVehicleData_t *vd;
-	qboolean landed;
 
 	if( !botGlobals.initialized ) {
 		Com_Printf( S_COLOR_RED "Bot_Spawn: bot system not initialized\n" );
@@ -539,69 +539,44 @@ int Bot_Spawn( int team, int vehicleIndex, vec3_t origin, vec3_t angles )
 
 	vd = &availableVehicles[vehicleIndex];
 
-	/* Spawn the entity */
-	ent = theLevel.spawnEntity();
-	if( !ent ) {
-		Com_Printf( S_COLOR_RED "Bot_Spawn: could not spawn entity\n" );
+	/* Spawn a real bot CLIENT. SV_AddBot allocates a client slot, connects it as
+	   a bot, and runs the normal MF_ClientSpawn path — so the vehicle gets a
+	   valid client_/playerState that the AI (and Pmove) can drive. This replaces
+	   the PR's placeholder entity spawn, which left client_ NULL and crashed. */
+	{
+		char botname[32];
+		Com_sprintf( botname, sizeof(botname), "Drone%d", slot );
+		clientNum = SV_AddBot( vehicleIndex, team, botname );
+	}
+	if( clientNum < 0 ) {
+		Com_Printf( S_COLOR_RED "Bot_Spawn: SV_AddBot failed\n" );
 		return -1;
 	}
 
-	/* Set basic entity fields */
-	VectorCopy( origin, ent->s.pos.trBase );
-	VectorCopy( origin, ent->r.currentOrigin );
-	VectorCopy( angles, ent->s.apos.trBase );
-	VectorCopy( angles, ent->r.currentAngles );
-	ent->s.pos.trType = TR_INTERPOLATE;
-	ent->s.apos.trType = TR_INTERPOLATE;
-	ent->s.eType = ET_VEHICLE;
-	ent->s.modelindex = vehicleIndex;
-	ent->classname_ = "bot_vehicle";
-	ent->takedamage_ = qtrue;
-	ent->health_ = vd->maxhealth;
-	ent->clipmask_ = MASK_PLAYERSOLID;
-	ent->r.svFlags |= SVF_BOT;  /* Mark as bot */
-
-	/* Create a fake client for this bot */
-	/* Note: In the real integration, you'd need to allocate a client slot.
-	 * This is a simplified version — the real integration would call
-	 * MF_ClientConnect / MF_ClientBegin equivalent code.
-	 * For now we set up the entity and leave client_ as NULL for AI-only entities.
-	 * The integration step will need to wire up a real client. */
-	
-	/* Determine if vehicle starts landed */
-	landed = ( vd->cat & (CAT_PLANE | CAT_HELO) ) ? qtrue : qfalse;
-
-	/* Initialize vehicle-specific data */
-	switch( vd->cat ) {
-	case CAT_PLANE:
-		MF_Spawn_Plane( ent, vehicleIndex, landed );
-		break;
-	case CAT_GROUND:
-		MF_Spawn_GroundVehicle( ent, vehicleIndex );
-		break;
-	case CAT_HELO:
-		MF_Spawn_Helo( ent, vehicleIndex, landed );
-		break;
-	case CAT_LQM:
-		MF_Spawn_LQM( ent, vehicleIndex );
-		break;
-	case CAT_BOAT:
-		MF_Spawn_Boat( ent, vehicleIndex );
-		break;
-	default:
-		Com_Printf( S_COLOR_RED "Bot_Spawn: unsupported vehicle category\n" );
-		ent->freeUp();
+	ent = theLevel.getEntity( clientNum );
+	if( !ent || !ent->client_ ) {
+		Com_Printf( S_COLOR_RED "Bot_Spawn: bot client %d has no entity/client\n", clientNum );
 		return -1;
 	}
 
-	/* Link entity into the world */
-	SV_LinkEntity( ent );
+	/* Reposition the freshly-spawned bot to the requested spot (e.g. near the
+	   player for circling), if a non-zero origin was supplied. */
+	if( origin && ( origin[0] || origin[1] || origin[2] ) ) {
+		VectorCopy( origin, ent->s.pos.trBase );
+		VectorCopy( origin, ent->r.currentOrigin );
+		VectorCopy( origin, ent->client_->ps_.origin );
+		if( angles ) {
+			VectorCopy( angles, ent->s.apos.trBase );
+			VectorCopy( angles, ent->client_->ps_.vehicleAngles );
+		}
+		SV_LinkEntity( ent );
+	}
 
 	/* Initialize bot state */
 	bs = &botGlobals.bots[slot];
 	memset( bs, 0, sizeof(botState_t) );
 	bs->active = qtrue;
-	bs->entityNum = ent->s.number;
+	bs->entityNum = clientNum;
 	bs->team = team;
 	bs->vehicleCat = vd->cat;
 	bs->vehicleIndex = vehicleIndex;

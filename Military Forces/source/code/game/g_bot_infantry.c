@@ -176,15 +176,12 @@ void Bot_Infantry_Navigate( botState_t *bs )
 		/* Set animation flags */
 		if( desiredSpeed > 0 ) {
 			if( running ) {
-				ent->client_->ps_.torsoAnim = A_LQM_FORWARD;  /* Run forward */
-				ent->client_->ps_.legsAnim = A_LQM_FORWARD;
+				ent->client_->ps_.vehicleAnim = A_LQM_FORWARD;  /* Run forward (MFQ3 vehicleAnim bitfield) */
 			} else {
-				ent->client_->ps_.torsoAnim = A_LQM_FORWARD;  /* Walk forward */
-				ent->client_->ps_.legsAnim = A_LQM_FORWARD;
+				ent->client_->ps_.vehicleAnim = A_LQM_FORWARD;  /* Walk forward (MFQ3 vehicleAnim bitfield) */
 			}
 		} else {
-			ent->client_->ps_.torsoAnim = A_LQM_STAND;
-			ent->client_->ps_.legsAnim = A_LQM_STAND;
+			ent->client_->ps_.vehicleAnim = A_LQM_STAND;
 		}
 	}
 }
@@ -265,8 +262,7 @@ void Bot_Infantry_SeekCover( botState_t *bs )
 
 			/* Crouch */
 			if( ent->client_ ) {
-				ent->client_->ps_.legsAnim = A_LQM_CROUCH;
-				ent->client_->ps_.torsoAnim = A_LQM_CROUCH;
+				ent->client_->ps_.vehicleAnim = A_LQM_CROUCH;
 				ent->client_->ps_.speed = 0;
 			}
 		}

@@ -12,6 +12,16 @@
 #define __G_BOT_H__
 
 #include "g_local.h"
+#include "g_level.h"   /* full GameEntity / LevelLocals defs (not just fwd-decls) */
+
+/* Compat: this MFQ3 fork dropped Quake's classic qboolean in favour of C++ bool.
+   The bot AI (PR #1) was written against the stock Quake type, so shim it here. */
+#ifndef MFQ3_QBOOLEAN_COMPAT
+#define MFQ3_QBOOLEAN_COMPAT
+typedef bool qboolean;
+#define qtrue  true
+#define qfalse false
+#endif
 
 /*
 =============================================================================
@@ -121,7 +131,7 @@ typedef enum {
 	BOT_STATE_LANDING,		/* Air vehicles: landing */
 
 	BOT_STATE_MAX
-} botState_t;
+} botAIState_t;
 
 
 /*
@@ -133,7 +143,7 @@ typedef enum {
 /* Per-bot runtime state — this is the core of the AI */
 typedef struct {
 	/* Core state */
-	botState_t		state;				/* current AI state */
+	botAIState_t		state;				/* current AI state */
 	int				entityNum;			/* entity number in g_entities / theLevel */
 	int				team;				/* team: MF_TEAM_1 or MF_TEAM_2 */
 	int				vehicleCat;			/* CAT_PLANE, CAT_GROUND, CAT_HELO, CAT_LQM, CAT_BOAT */
@@ -257,7 +267,7 @@ qboolean Bot_ShouldFlee( botState_t *bs );
 qboolean Bot_ShouldFire( botState_t *bs );
 
 /* Set a bot's state with logging. */
-void	Bot_SetState( botState_t *bs, botState_t newState );
+void	Bot_SetState( botState_t *bs, botAIState_t newState );
 
 
 /*

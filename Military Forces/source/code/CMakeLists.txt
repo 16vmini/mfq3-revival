@@ -123,6 +123,9 @@ add_library(game STATIC
     game/bg_mfq3util.c   game/bg_misc.c       game/bg_planemove.c
     game/bg_pmove.c      game/bg_slidemove.c  game/bg_vehicledata.c
     game/bg_weapondata.c
+    game/g_bot_ai.c      game/g_bot_air.c     game/g_bot_boat.c
+    game/g_bot_cmds.c    game/g_bot_ground.c  game/g_bot_helo.c
+    game/g_bot_infantry.c                      game/g_bot_waypoint.c
     game/g_active.c      game/g_arenas.c      game/g_boat.cpp
     game/g_client.c      game/g_client.cpp    game/g_cmds.c
     game/g_combat.c      game/g_entity.cpp    game/g_groundinstallation.c
