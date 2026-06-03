@@ -353,7 +353,9 @@ void Bot_AddCircling_f( void )
 		wpPos[1] = playerOrigin[1] + radius * sin( angle );
 		wpPos[2] = playerOrigin[2] + 1000.0f;  /* Same altitude as spawn */
 
-		Com_sprintf( wpName, sizeof(wpName), "circle_wp_%d", i );
+		/* name must be unique per bot, else Bot_AddWaypoint skips the duplicate
+		   and wpIndices end up pointing past the array (OOB write -> crash). */
+		Com_sprintf( wpName, sizeof(wpName), "circle_wp_%d_%d", slot, i );
 		Bot_AddWaypoint( wpName, wpPos );
 		wpIndices[i] = firstWpIndex + i;
 	}

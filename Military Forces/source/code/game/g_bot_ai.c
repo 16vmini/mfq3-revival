@@ -468,6 +468,71 @@ void Bot_Think( botState_t *bs )
   Each bot thinks at BOT_THINK_INTERVAL (100ms). We track when each bot
   last thought and only run it when enough time has elapsed.
 */
+/*
+  Bot_DriveVehicle — translate the bot's intent into a usercmd_t.
+
+  The bot now inhabits a real client, so the engine runs Pmove on it from
+  ent->client_->pers_.cmd_. The plane/helo flight models steer their
+  vehicleAngles TOWARD the view angles derived from that usercmd, so we just
+  point the view at the current waypoint and hold throttle. This replaces the
+  PR's direct ps_/trDelta writes (which Pmove would overwrite).
+*/
+static void Bot_DriveVehicle( botState_t *bs )
+{
+	GameEntity	*ent;
+	vec3_t		target, dir, desired, fwd;
+	usercmd_t	*cmd;
+	float		dist;
+	int			i;
+
+	if( !bs || !bs->active ) return;
+	if( !( bs->vehicleCat & ( CAT_PLANE | CAT_HELO ) ) ) return;   /* air only for now */
+
+	ent = theLevel.getEntity( bs->entityNum );
+	if( !ent || !ent->client_ ) return;
+
+	cmd = &ent->client_->pers_.cmd_;
+
+	/* target the current waypoint, else fly straight ahead */
+	if( bs->currentWaypoint >= 0 && bs->currentWaypoint < botGlobals.waypointList.usedWPs ) {
+		VectorCopy( botGlobals.waypointList.waypoints[bs->currentWaypoint].pos, target );
+	} else {
+		AngleVectors( ent->client_->ps_.vehicleAngles, fwd, NULL, NULL );
+		VectorMA( ent->r.currentOrigin, 2000, fwd, target );
+	}
+
+	VectorSubtract( target, ent->r.currentOrigin, dir );
+	dist = VectorNormalize( dir );
+
+	/* reached the waypoint -> advance along the loop */
+	if( bs->currentWaypoint >= 0 && dist < 500 ) {
+		bs->currentWaypoint = botGlobals.waypointList.waypoints[bs->currentWaypoint].nextWaypointIndex;
+	}
+
+	vectoangles( dir, desired );
+
+	/* build the usercmd so ps_.viewangles resolves to `desired`
+	   (viewangles = SHORT2ANGLE(cmd.angles + delta_angles)) */
+	cmd->serverTime = theLevel.time_;
+	for( i = 0; i < 3; i++ ) {
+		cmd->angles[i] = ANGLE2SHORT( desired[i] ) - ent->client_->ps_.delta_angles[i];
+	}
+	cmd->angles[ROLL] = (short)( 0 - ent->client_->ps_.delta_angles[ROLL] );  /* keep wings level */
+	cmd->forwardmove = 0;
+	cmd->rightmove = 0;
+	cmd->upmove = 0;
+	cmd->buttons = 0;
+
+	/* throttle up so it actually flies */
+	ent->client_->ps_.fixed_throttle = MF_THROTTLE_MILITARY;
+
+	/* shoot when attacking a target */
+	if( bs->state == BOT_STATE_ATTACK && bs->targetEntityNum >= 0 ) {
+		cmd->buttons |= BUTTON_ATTACK;
+	}
+}
+
+
 void Bot_Frame( void )
 {
 	int i;
@@ -482,6 +547,9 @@ void Bot_Frame( void )
 		/* Check if it's time for this bot to think */
 		/* For simplicity, every frame is fine since FRAMETIME = 100ms = BOT_THINK_INTERVAL */
 		Bot_Think( bs );
+
+		/* turn the bot's intent into a usercmd that Pmove will fly */
+		Bot_DriveVehicle( bs );
 	}
 }
 
@@ -559,6 +627,12 @@ int Bot_Spawn( int team, int vehicleIndex, vec3_t origin, vec3_t angles )
 		return -1;
 	}
 
+	/* MF_ClientSpawn builds a fresh vehicle entity, which loses the SVF_BOT flag
+	   set at connect. Without it, G_RunClient skips ClientThink_real for this
+	   client -- so the vehicle never transitions ET_INVISIBLE -> ET_VEHICLE (stays
+	   invisible) and Pmove never runs (no movement). Re-assert it here. */
+	ent->r.svFlags |= SVF_BOT;
+
 	/* Reposition the freshly-spawned bot to the requested spot (e.g. near the
 	   player for circling), if a non-zero origin was supplied. */
 	if( origin && ( origin[0] || origin[1] || origin[2] ) ) {
@@ -620,6 +694,10 @@ int Bot_Spawn( int team, int vehicleIndex, vec3_t origin, vec3_t angles )
 
 	Com_Printf( "Bot spawned: slot %d, entity %d, vehicle %s (cat %d)\n",
 		slot, bs->entityNum, vd->tinyName, bs->vehicleCat );
+	Com_Printf( "^3BOTDIAG: client=%d vehicle_=%d eType=%d svf=%d inuse=%d linked=%d org=%.0f %.0f %.0f\n",
+		clientNum, ent->client_->vehicle_, ent->s.eType, ent->r.svFlags,
+		(int)ent->inuse_, (int)ent->r.linked,
+		ent->r.currentOrigin[0], ent->r.currentOrigin[1], ent->r.currentOrigin[2] );
 
 	return slot;
 }
