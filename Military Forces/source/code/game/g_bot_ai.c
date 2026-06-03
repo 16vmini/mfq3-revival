@@ -694,10 +694,6 @@ int Bot_Spawn( int team, int vehicleIndex, vec3_t origin, vec3_t angles )
 
 	Com_Printf( "Bot spawned: slot %d, entity %d, vehicle %s (cat %d)\n",
 		slot, bs->entityNum, vd->tinyName, bs->vehicleCat );
-	Com_Printf( "^3BOTDIAG: client=%d vehicle_=%d eType=%d svf=%d inuse=%d linked=%d org=%.0f %.0f %.0f\n",
-		clientNum, ent->client_->vehicle_, ent->s.eType, ent->r.svFlags,
-		(int)ent->inuse_, (int)ent->r.linked,
-		ent->r.currentOrigin[0], ent->r.currentOrigin[1], ent->r.currentOrigin[2] );
 
 	return slot;
 }

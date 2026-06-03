@@ -159,6 +159,15 @@ int SV_AddBot( int vehicleIndex, int team, const char *name )
 	newcl->lastPacketTime_ = theSVS.time_;
 	newcl->lastConnectTime_ = theSVS.time_;
 
+	// MF_ClientConnect clears cg_nextVehicle/cg_vehicle to -1 and writes it back.
+	// A bot has no cgame to re-pick a vehicle from the menu, so re-assert the
+	// chosen one here, after connect but before begin/spawn -- otherwise
+	// MF_ClientSpawn reads -1 and spawns an invisible vehicle-less spectator.
+	SV_GetUserinfo( clientNum, userinfo, sizeof(userinfo) );
+	Info_SetValueForKey( userinfo, "cg_nextVehicle", va( "%d", vehicleIndex ) );
+	Info_SetValueForKey( userinfo, "cg_vehicle", va( "%d", vehicleIndex ) );
+	SV_SetUserinfo( clientNum, userinfo );
+
 	// bring it into the world now (sets CS_ACTIVE + calls clientBegin -> spawns the vehicle)
 	memset( &cmd, 0, sizeof(cmd) );
 	SV_ClientEnterWorld( newcl, &cmd );
