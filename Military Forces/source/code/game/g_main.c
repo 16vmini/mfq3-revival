@@ -412,6 +412,7 @@ void G_InitGame( int levelTime, int randomSeed )
 
 		// init some MFQ3 stuff
 		//DroneInit();
+		Bot_Init();
 	}
 }
 
@@ -1701,6 +1702,9 @@ void G_RunFrame( int levelTime )
 			ClientEndFrame( ent );
 	}
 	end = Sys_Milliseconds();
+
+	// run bot AI system
+	Bot_Frame();
 
 	// see if it is time to do a tournement restart
 	CheckTournament();

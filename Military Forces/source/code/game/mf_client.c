@@ -35,8 +35,8 @@ restarts.
 */
 char *MF_ClientConnect( int clientNum, bool firstTime, bool isBot ) 
 {
-	if( isBot ) 
-		return "MFQ3 doesn't have bots yet";
+	//if( isBot ) 
+	//	return "MFQ3 doesn't have bots yet";
 
 	if( g_gametype.integer == GT_MISSION_EDITOR && theLevel.numConnectedClients_ >= 1 ) 
 		return "MFQ3 IGME in use. Connecting not allowed.";
@@ -100,7 +100,11 @@ char *MF_ClientConnect( int clientNum, bool firstTime, bool isBot )
 	G_ReadSessionData( client );
 
 	// for later
-//	if( isBot ) 
+	if( isBot ) 
+	{
+		ent->r.svFlags |= SVF_BOT;
+		ent->inuse_ = true;
+	}
 //	{
 //		ent->r.svFlags |= SVF_BOT;
 //		ent->inuse_ = true;
