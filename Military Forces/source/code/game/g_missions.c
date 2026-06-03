@@ -226,8 +226,13 @@ void G_MissionRunIntermission( void )
 			continue;
 		if( p->client_->pers_.cmd_.buttons & ( BUTTON_ATTACK | BUTTON_ATTACK_MAIN ) )
 		{
-			Com_Printf( "Mission: restart requested -> map_restart\n" );
-			Cbuf_ExecuteText( EXEC_APPEND, "map_restart 0\n" );
+			// Full map reload (not map_restart): the lightweight restart leaves
+			// the collision world in a state our spawn-time ground trace crashes
+			// on. A full "map <name>" reproduces the clean initial-load path.
+			char mapname[64];
+			Cvar_VariableStringBuffer( "mapname", mapname, sizeof(mapname) );
+			Com_Printf( "Mission: restart requested -> reloading map %s\n", mapname );
+			Cbuf_ExecuteText( EXEC_APPEND, va( "map %s\n", mapname ) );
 			return;
 		}
 	}
