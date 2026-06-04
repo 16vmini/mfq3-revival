@@ -1,0 +1,35 @@
+// MFQ3 Training Mission
+mission
+{
+	number		2
+	name		"Dogfight"
+	briefing	"An enemy fighter is hunting you. Out-turn it and shoot it down before it gets you."
+	map			"mfq3_norway"
+	gametype	"ffa"
+
+	player
+	{
+		vehicle		"f-16"
+		radar		"air"
+	}
+
+	enemy
+	{
+		vehicle		"f-16"
+		team		1
+		spawn		"ahead"
+		distance	1500
+		altitude	250
+		facing		"player"
+		behaviour	"aggressive"
+	}
+
+	objective
+	{
+		type		"destroyAll"
+		text		"Defeat the enemy fighter"
+	}
+
+	onComplete	"MISSION COMPLETE"
+	onFail		"restart"
+}

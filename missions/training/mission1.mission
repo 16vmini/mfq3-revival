@@ -1,0 +1,45 @@
+// MFQ3 Training Mission
+// Parsed with COM_Parse-style { } blocks and "quoted" strings.
+// Drop a new missionN.mission in this folder and it appears in the Training menu.
+mission
+{
+	number		1
+	name		"Intercept"
+	briefing	"A lone bandit is cruising ahead of you. Slide onto its tail and gun it down."
+	map			"mfq3_norway"
+	gametype	"ffa"
+
+	player
+	{
+		vehicle		"f-16"
+		radar		"air"			// off | air | ground
+	}
+
+	// One or more enemy blocks. spawn is relative to the player's nose.
+	enemy
+	{
+		vehicle		"f-16"
+		team		1
+		spawn		"ahead"			// ahead | behind | flank | <x y z>
+		distance	500				// units in front
+		altitude	250				// units above the player
+		facing		"away"			// away | player
+		behaviour	"straight"		// straight | circle | patrol | aggressive
+
+		// Future: patrol route the bot flies (data-driven waypoints)
+		// waypoints
+		// {
+		//     point  "1000 0 1500"
+		//     point  "1000 2000 1500"
+		// }
+	}
+
+	objective
+	{
+		type		"destroyAll"	// destroyAll | destroyTarget | survive | reach
+		text		"Shoot down the enemy aircraft"
+	}
+
+	onComplete	"MISSION COMPLETE"
+	onFail		"restart"			// restart | menu
+}

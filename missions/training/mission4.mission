@@ -1,0 +1,37 @@
+// MFQ3 Training Mission
+mission
+{
+	number		4
+	name		"Furball"
+	briefing	"Three bandits, one of you. Stay fast, keep turning, and clear the sky."
+	map			"mfq3_norway"
+	gametype	"ffa"
+
+	player
+	{
+		vehicle		"f-16"
+		radar		"air"
+	}
+
+	// Multiple enemies: repeat the enemy block (or use count).
+	enemy
+	{
+		vehicle		"f-16"
+		team		1
+		count		3				// spawned fanned out ahead
+		spawn		"ahead"
+		distance	1800
+		altitude	250
+		facing		"player"
+		behaviour	"aggressive"
+	}
+
+	objective
+	{
+		type		"destroyAll"
+		text		"Shoot down all three bandits"
+	}
+
+	onComplete	"MISSION COMPLETE"
+	onFail		"restart"
+}
