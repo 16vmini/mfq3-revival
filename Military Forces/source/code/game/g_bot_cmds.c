@@ -642,6 +642,7 @@ void MF_SpawnTrainingMission( int mission, GameEntity *player )
 			if( slot >= 0 && trainEnemyCount < MAX_TRAIN_ENEMIES )
 				trainEnemies[trainEnemyCount++] = botGlobals.bots[slot].entityNum;
 		}
+		G_MissionExternalBegin( trainEnemyCount );   /* register as mission objectives */
 		spawning = false;
 		return;
 	}
@@ -679,34 +680,34 @@ void MF_SpawnTrainingMission( int mission, GameEntity *player )
 				trainEnemies[trainEnemyCount++] = botGlobals.bots[slot].entityNum;
 		}
 	}
+	G_MissionExternalBegin( trainEnemyCount );   /* register as mission objectives */
 	spawning = false;
 }
 
 
 /*
-  MF_TrainingFrame -- called once per server frame (after Bot_Frame). When every
-  enemy in the active training mission is dead, center-print MISSION COMPLETE.
+  MF_TrainingFrame -- called once per server frame (after Bot_Frame). Reports
+  each newly-dead training enemy to the mission engine, which fires the real
+  Mission Complete screen (+ fire-to-restart) once the last one is down. Player
+  death is handled by the engine's own G_MissionFailed hook (g_vehicle.cpp).
 */
 void MF_TrainingFrame( void )
 {
-	int			i, alive = 0;
-	GameEntity	*pe;
+	int		i;
 
 	if( trainMission <= 0 || trainDone || trainEnemyCount == 0 ) return;
 
 	for( i = 0; i < trainEnemyCount; i++ )
 	{
-		GameEntity *e = theLevel.getEntity( trainEnemies[i] );
-		if( e && e->inuse_ && e->health_ > 0 && e->s.eType == ET_VEHICLE )
-			alive++;
-	}
+		GameEntity *e;
 
-	if( alive == 0 )
-	{
-		trainDone = true;
-		pe = theLevel.getEntity( trainPlayerNum );
-		if( pe && pe->client_ )
-			SV_GameSendServerCommand( trainPlayerNum, "cp \"^2MISSION COMPLETE\"" );
-		G_LogPrintf( "Training mission %d complete\n", trainMission );
+		if( trainEnemies[i] < 0 ) continue;   /* already counted this kill */
+
+		e = theLevel.getEntity( trainEnemies[i] );
+		if( !e || !e->inuse_ || e->health_ <= 0 || e->s.eType != ET_VEHICLE )
+		{
+			trainEnemies[i] = -1;                 /* mark counted */
+			G_MissionTargetDestroyed( e );        /* engine: decrement + Complete at 0 */
+		}
 	}
 }

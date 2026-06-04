@@ -671,6 +671,7 @@ void Boat_Pain( GameEntity *self, GameEntity *attacker, int damage );
 void G_LoadMissionScripts();
 GameEntity* G_SpawnMissionVehicle( int vehIdx, int team, vec3_t origin, vec3_t angles );
 GameEntity* G_SpawnMissionGroundInstallation( int giIdx, int team, vec3_t origin, vec3_t angles );
+void G_MissionExternalBegin( int targets );
 void G_MissionTargetDestroyed( GameEntity* target );
 void G_MissionBonusDestroyed( GameEntity* target );
 void G_MissionFailed( void );

@@ -145,6 +145,22 @@ void G_LoadMissionScripts()
 }
 
 
+// Externally-driven mission setup. The .mis loader spawns ground installations
+// as objectives; the air-combat training scenarios instead spawn bot CLIENTS and
+// register N of them as objectives here, so the same Complete/Failed screens +
+// fire-to-restart flow drives them. Call once after spawning the scenario, then
+// call G_MissionTargetDestroyed() as each registered enemy dies.
+void G_MissionExternalBegin( int targets )
+{
+	s_missionTargetsTotal		= targets;
+	s_missionTargetsRemaining	= targets;
+	s_missionBonusTotal			= 0;
+	s_missionBonusDestroyed		= 0;
+	s_missionComplete			= false;
+	s_missionFailed				= false;
+}
+
+
 // Called from Die_MiscVehicle when an FL_MISSION_TARGET entity is destroyed.
 void G_MissionTargetDestroyed( GameEntity* target )
 {
