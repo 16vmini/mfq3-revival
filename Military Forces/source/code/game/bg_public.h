@@ -1041,6 +1041,7 @@ struct mission_overview_t {
 	int				gametype;			
 	char			missionname[MAX_NAME_LENGTH];
 	char			objective[MAX_NAME_LENGTH];
+	char			description[128];
 	bool		valid;
 };
 

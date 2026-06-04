@@ -215,17 +215,23 @@ void MF_ClientBegin( int clientNum )
 	}
 	G_LogPrintf( "ClientBegin: %i\n", clientNum );
 
-	// Training mode: if a mission is selected, spawn its enemies ahead of the
-	// human player. Bots carry SVF_BOT, so this never re-triggers for the bots
-	// that Bot_Spawn connects (which would recurse).
+	// Mission mode: the .mis loader (G_LoadMissionScripts) already spawned the
+	// enemies. When a real mission is loaded, default the human's radar to AIR so
+	// enemy aircraft show on radar and missiles can lock.
 	{
 		GameEntity *pe = theLevel.getEntity( clientNum );
-		if( pe && !( pe->r.svFlags & SVF_BOT ) &&
+		if( pe && pe->client_ && !( pe->r.svFlags & SVF_BOT ) &&
 			client->sess_.sessionTeam_ != ClientBase::TEAM_SPECTATOR )
 		{
-			int tm = Cvar_VariableIntegerValue( "mf_trainingMission" );
-			if( tm > 0 )
-				MF_SpawnTrainingMission( tm, pe );
+			char mis[64];
+			Cvar_VariableStringBuffer( "mf_mission", mis, sizeof(mis) );
+			if( mis[0] && Q_stricmp( mis, "default" ) && Q_stricmp( mis, "none" ) )
+			{
+				pe->client_->ps_.ONOFF = ( pe->client_->ps_.ONOFF & ~OO_RADAR ) | OO_RADAR_AIR;
+				pe->client_->pers_.lastRadar_ = ( pe->client_->ps_.ONOFF & OO_RADAR );
+				// move air enemies to just ahead of where we actually spawned
+				MF_PositionMissionEnemiesNearPlayer( pe );
+			}
 		}
 	}
 

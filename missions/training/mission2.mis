@@ -1,0 +1,22 @@
+// MFQ3 Training Mission 2 - Dogfight
+Overview
+{
+	map	mfq3_norway
+	gameset	2
+	gametype	0
+	mission	Dogfight
+	goal	Dogfight
+	order	2
+	description	"Defeat a maneuvering enemy fighter."
+}
+Entities
+{
+	Vehicle
+	{
+		Index	0
+		Name	F-16
+		Team	1
+		Origin	-3872.0;7268.0;1500.0
+		Angles	0.0;180.0;0.0
+	}
+}

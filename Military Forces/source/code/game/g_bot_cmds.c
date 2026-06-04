@@ -580,8 +580,16 @@ void Bot_RegisterCommands( void )
 static int  trainMission   = 0;     /* current mission number, 0 = none */
 static int  trainPlayerNum = -1;    /* the human the mission is for */
 static int  trainEnemies[MAX_TRAIN_ENEMIES];
+static bool trainEnemyArmed[MAX_TRAIN_ENEMIES];  /* became a live vehicle at least once */
 static int  trainEnemyCount = 0;
 static bool trainDone = false;
+
+/* air enemies QUEUED by the .mis loader at G_InitGame, then spawned fresh ahead
+   of the human in MF_ClientBegin (so they're a findable intercept wherever the
+   map drops the player -- spawning-relative is what the hard-coded version did). */
+static int  missionPendingVeh[MAX_TRAIN_ENEMIES];
+static int  missionPendingTeam[MAX_TRAIN_ENEMIES];
+static int  missionPendingCount = 0;
 
 
 /*
@@ -686,6 +694,110 @@ void MF_SpawnTrainingMission( int mission, GameEntity *player )
 
 
 /*
+  MF_MissionResetEnemies / MF_SpawnMissionBot -- used by the .mis loader
+  (G_LoadMissionScripts) to spawn enemy AIRCRAFT as flying bot objectives at the
+  mission's editor-placed positions. Tracked in trainEnemies[] so MF_TrainingFrame
+  reports each kill to the mission engine's objective counter.
+*/
+void MF_MissionResetEnemies( void )
+{
+	trainEnemyCount = 0;
+	trainDone = false;
+	missionPendingCount = 0;
+}
+
+/* .mis loader: queue an air enemy to be spawned ahead of the player on spawn */
+void MF_QueueMissionAirEnemy( int vehicleIndex, int team )
+{
+	if( missionPendingCount >= MAX_TRAIN_ENEMIES ) return;
+	missionPendingVeh[missionPendingCount]  = vehicleIndex;
+	missionPendingTeam[missionPendingCount] = team;
+	missionPendingCount++;
+}
+
+int MF_SpawnMissionBot( int vehicleIndex, int team, vec3_t origin, vec3_t angles )
+{
+	int slot;
+
+	if( trainEnemyCount >= MAX_TRAIN_ENEMIES ) return -1;
+	if( vehicleIndex < 0 || vehicleIndex >= bg_numberOfVehicles ) return -1;
+	if( team != 1 && team != 2 ) team = 1;   /* default enemy team */
+
+	/* keep aircraft out of terrain: a .mis origin placed inside a mountain spawns
+	   the bot in solid -> it dies on frame 1. Only lift if the origin is ACTUALLY
+	   inside solid (raise in steps until clear). Tracing from far above wrongly
+	   caught ceiling/clip brushes and flung the bot to the skybox. */
+	if( availableVehicles[vehicleIndex].cat & ( CAT_PLANE | CAT_HELO ) )
+	{
+		int guard = 0;
+		while( ( SV_PointContents( origin, ENTITYNUM_NONE ) & CONTENTS_SOLID ) && guard < 60 )
+		{
+			origin[2] += 200.0f;
+			guard++;
+		}
+		if( guard > 0 )
+			origin[2] += 300.0f;   /* extra clearance once out of the rock */
+	}
+
+	slot = Bot_Spawn( team, vehicleIndex, origin, angles );
+	if( slot < 0 ) return -1;
+
+	trainEnemyArmed[trainEnemyCount] = false;   /* confirmed alive before any kill counts */
+	trainEnemies[trainEnemyCount++] = botGlobals.bots[slot].entityNum;
+	return botGlobals.bots[slot].entityNum;
+}
+
+
+/*
+  MF_PositionMissionEnemiesNearPlayer -- the .mis loader spawns aircraft enemies
+  at G_InitGame, before the player exists and at fixed editor positions that may
+  be far from a random deathmatch spawn. When the human spawns we teleport those
+  enemies to just ahead of them (facing away, flying straight) so an air-combat
+  mission is an immediate, findable intercept regardless of where the map put us.
+*/
+void MF_PositionMissionEnemiesNearPlayer( GameEntity *player )
+{
+	static bool	spawning = false;   /* re-entrancy guard: the bots we spawn connect
+	                                   and re-enter MF_ClientBegin -> here */
+	vec3_t	fwd, right, pang, spawn, sang;
+	int		i, s, en;
+
+	if( !player || !player->client_ || missionPendingCount == 0 ) return;
+	if( spawning ) return;
+	spawning = true;
+
+	VectorCopy( player->client_->ps_.viewangles, pang );
+	pang[PITCH] = 0;
+	pang[ROLL]  = 0;
+	AngleVectors( pang, fwd, right, NULL );
+
+	for( i = 0; i < missionPendingCount; i++ )
+	{
+		VectorMA( player->r.currentOrigin, 600.0f + i * 400.0f, fwd, spawn );
+		VectorMA( spawn, ( i - (missionPendingCount-1) * 0.5f ) * 250.0f, right, spawn );
+		spawn[2] += 150.0f;
+		VectorSet( sang, 0, pang[YAW], 0 );   /* face away -> player slides onto its tail */
+
+		/* spawn fresh ahead of the player (MF_SpawnMissionBot tracks it in
+		   trainEnemies[] for the objective counter) */
+		en = MF_SpawnMissionBot( missionPendingVeh[i], missionPendingTeam[i], spawn, sang );
+		if( en >= 0 )
+		{
+			for( s = 0; s < MAX_BOTS; s++ )
+				if( botGlobals.bots[s].active && botGlobals.bots[s].entityNum == en )
+				{
+					botGlobals.bots[s].holdStraight = qtrue;   /* easy straight target */
+					break;
+				}
+		}
+	}
+
+	missionPendingCount = 0;   /* consumed */
+	spawning = false;
+}
+
+
+/*
   MF_TrainingFrame -- called once per server frame (after Bot_Frame). Reports
   each newly-dead training enemy to the mission engine, which fires the real
   Mission Complete screen (+ fire-to-restart) once the last one is down. Player
@@ -695,18 +807,28 @@ void MF_TrainingFrame( void )
 {
 	int		i;
 
-	if( trainMission <= 0 || trainDone || trainEnemyCount == 0 ) return;
+	if( trainDone || trainEnemyCount == 0 ) return;
 
 	for( i = 0; i < trainEnemyCount; i++ )
 	{
-		GameEntity *e;
+		GameEntity	*e;
+		bool		alive;
 
 		if( trainEnemies[i] < 0 ) continue;   /* already counted this kill */
 
 		e = theLevel.getEntity( trainEnemies[i] );
-		if( !e || !e->inuse_ || e->health_ <= 0 || e->s.eType != ET_VEHICLE )
+		/* judge life by health/inuse, NOT eType: an unobserved flying bot reports
+		   eType ET_INVISIBLE (=10) while perfectly alive, which falsely read as a kill */
+		alive = ( e && e->inuse_ && e->health_ > 0 );
+
+		if( alive )
 		{
-			trainEnemies[i] = -1;                 /* mark counted */
+			trainEnemyArmed[i] = true;            /* confirmed alive -- arm the kill check */
+		}
+		else if( trainEnemyArmed[i] )
+		{
+			/* it was alive and now is dead/gone -> a real kill */
+			trainEnemies[i] = -1;
 			G_MissionTargetDestroyed( e );        /* engine: decrement + Complete at 0 */
 		}
 	}

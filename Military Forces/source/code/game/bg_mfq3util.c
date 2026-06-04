@@ -647,6 +647,15 @@ static void MF_ParseOverview( char **buf, mission_overview_t* overview )
 				continue;
 			}
 		}
+		else if( !strcmp( token, "description" ) )
+		{
+			token = COM_ParseExt( buf, false );
+			if( token[0] )
+			{
+				Q_strncpyz(overview->description, token, sizeof(overview->description) );
+				continue;
+			}
+		}
 	}
 	MF_CheckMissionScriptOverviewValid(overview, false);// set to true after format change
 }

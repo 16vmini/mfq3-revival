@@ -34,3 +34,6 @@ Thumbs.db
 
 # Mission worktree local test homepath (logs, screenshots, saved .mis)
 /playhome/
+
+# Claude agent worktrees / session data
+/.claude/

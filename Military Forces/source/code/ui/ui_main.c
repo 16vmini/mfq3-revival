@@ -3215,7 +3215,179 @@ static void UI_LoadDemos() {
 }
 
 
-static bool UI_SetNextMap(int actual, int index) 
+/*
+===============
+UI_ParseMissionOverview
+
+MFQ3: parse just the Overview block of a training .mis file in the UI module.
+Fills missionName / description / mapName. Mirrors MF_ParseOverview in the
+game module but is kept self-contained so the UI does not depend on bg code.
+===============
+*/
+static void UI_ParseMissionOverview( char *buf, missionInfo_t *mi )
+{
+	char	*token;
+	char	**p = &buf;
+
+	// find the Overview block
+	while ( 1 )
+	{
+		token = COM_ParseExt( p, true );
+		if ( !token[0] )
+		{
+			return;					// end of file, no Overview
+		}
+		if ( !Q_stricmp( token, "Overview" ) )
+		{
+			break;
+		}
+	}
+
+	// opening brace
+	token = COM_ParseExt( p, true );
+	if ( strcmp( token, "{" ) )
+	{
+		return;
+	}
+
+	while ( 1 )
+	{
+		token = COM_ParseExt( p, true );
+		if ( !token[0] || !strcmp( token, "}" ) )
+		{
+			break;
+		}
+		if ( !strcmp( token, "map" ) )
+		{
+			token = COM_ParseExt( p, false );
+			if ( token[0] )
+			{
+				Q_strncpyz( mi->mapName, token, sizeof(mi->mapName) );
+			}
+		}
+		else if ( !strcmp( token, "mission" ) )
+		{
+			token = COM_ParseExt( p, false );
+			if ( token[0] )
+			{
+				Q_strncpyz( mi->missionName, token, sizeof(mi->missionName) );
+			}
+		}
+		else if ( !strcmp( token, "description" ) )
+		{
+			token = COM_ParseExt( p, false );
+			if ( token[0] )
+			{
+				Q_strncpyz( mi->description, token, sizeof(mi->description) );
+			}
+		}
+		else if ( !strcmp( token, "order" ) )
+		{
+			token = COM_ParseExt( p, false );
+			if ( token[0] )
+			{
+				mi->order = atoi( token );
+			}
+		}
+		// other keys (gameset/gametype/goal) are ignored here
+	}
+}
+
+
+/*
+===============
+UI_LoadMissions
+
+MFQ3: scan missions/training/*.mis and build uiInfo.missionList. Each entry
+records the file base name, the Overview short name, the tagline/description
+and the map to load. Drives FEEDER_MISSIONS in the Training menu.
+===============
+*/
+static void UI_LoadMissions()
+{
+	char			fileList[4096];
+	char			*fileName;
+	char			path[MAX_QPATH];
+	fileHandle_t	f;
+	int				i, len, count, fileSize;
+
+	uiInfo.missionCount = 0;
+	uiInfo.missionIndex = 0;
+
+	count = FS_GetFileList( "missions/training", ".mis", fileList, sizeof(fileList) );
+	if ( count > MAX_TRAINING_MISSIONS )
+	{
+		count = MAX_TRAINING_MISSIONS;
+	}
+
+	fileName = fileList;
+	for ( i = 0; i < count; i++ )
+	{
+		char	*buf;
+		missionInfo_t *mi = &uiInfo.missionList[uiInfo.missionCount];
+
+		len = strlen( fileName );
+
+		// open the mission file
+		Com_sprintf( path, sizeof(path), "missions/training/%s", fileName );
+		fileSize = FS_FOpenFileByMode( path, &f, FS_READ );
+		if ( fileSize > 0 && f )
+		{
+			buf = (char *)uiInfo.uiUtils.alloc( fileSize + 1 );
+			FS_Read2( buf, fileSize, f );
+			buf[fileSize] = '\0';
+			FS_FCloseFile( f );
+
+			memset( mi, 0, sizeof(*mi) );
+
+			// base file name without ".mis" extension
+			Q_strncpyz( mi->fileName, fileName, sizeof(mi->fileName) );
+			if ( len > 4 && !Q_stricmp( mi->fileName + strlen(mi->fileName) - 4, ".mis" ) )
+			{
+				mi->fileName[strlen(mi->fileName) - 4] = '\0';
+			}
+
+			UI_ParseMissionOverview( buf, mi );
+
+			// fall back to file name if Overview lacked a mission name
+			if ( !mi->missionName[0] )
+			{
+				Q_strncpyz( mi->missionName, mi->fileName, sizeof(mi->missionName) );
+			}
+
+			// missions with no "order" key sort last
+			if ( mi->order <= 0 )
+			{
+				mi->order = 9999;
+			}
+
+			uiInfo.missionCount++;
+		}
+
+		fileName += len + 1;
+	}
+
+	// sort the list by the Overview "order" key (ascending), so the menu shows
+	// missions in designed sequence rather than filesystem order
+	{
+		int a, b;
+		for ( a = 0; a < uiInfo.missionCount - 1; a++ )
+		{
+			for ( b = a + 1; b < uiInfo.missionCount; b++ )
+			{
+				if ( uiInfo.missionList[b].order < uiInfo.missionList[a].order )
+				{
+					missionInfo_t tmp = uiInfo.missionList[a];
+					uiInfo.missionList[a] = uiInfo.missionList[b];
+					uiInfo.missionList[b] = tmp;
+				}
+			}
+		}
+	}
+}
+
+
+static bool UI_SetNextMap(int actual, int index)
 {
 	int i;
 	for (i = actual + 1; i < uiInfo.mapCount; i++) 
@@ -3911,10 +4083,27 @@ void UI_RunMenuScript(char **args)
 			  Cbuf_ExecuteText( EXEC_APPEND, va("demo %s_%i\n", uiInfo.mapList[ui_currentMap.integer].mapLoadName, uiInfo.gameTypes[ui_gameType.integer].gtEnum));
 			}
 		}
-		else if (Q_stricmp(name, "LoadDemos") == 0) 
+		else if (Q_stricmp(name, "LoadDemos") == 0)
 		{
 			UI_LoadDemos();
-		} 
+		}
+		else if (Q_stricmp(name, "LoadMissions") == 0)
+		{
+			UI_LoadMissions();
+		}
+		else if (Q_stricmp(name, "RunMission") == 0)
+		{
+			if (uiInfo.missionCount > 0 && uiInfo.missionIndex >= 0 && uiInfo.missionIndex < uiInfo.missionCount)
+			{
+				missionInfo_t *mi = &uiInfo.missionList[uiInfo.missionIndex];
+				if (mi->mapName[0])
+				{
+					Cbuf_ExecuteText( EXEC_APPEND,
+						va("set mf_mission training/%s ; set mf_autoVehicle 0 ; set g_gametype 0 ; map %s\n",
+							mi->fileName, mi->mapName) );
+				}
+			}
+		}
 		else if (Q_stricmp(name, "LoadMovies") == 0)
 		{
 			UI_LoadMovies();
@@ -5039,6 +5228,8 @@ int UI_FeederCount(float feederID)
 		return uiInfo.modCount;
 	} else if (feederID == FEEDER_DEMOS) {
 		return uiInfo.demoCount;
+	} else if (feederID == FEEDER_MISSIONS) {
+		return uiInfo.missionCount;
 	}
 	return 0;
 }
@@ -5268,6 +5459,14 @@ const char *UI_FeederItemText(float feederID, int index, int column, qhandle_t *
 		if (index >= 0 && index < uiInfo.demoCount) {
 			return uiInfo.demoList[index];
 		}
+	} else if (feederID == FEEDER_MISSIONS) {
+		if (index >= 0 && index < uiInfo.missionCount) {
+			// column 0 = short name, column 1 = description tagline
+			if (column == 1) {
+				return uiInfo.missionList[index].description;
+			}
+			return uiInfo.missionList[index].missionName;
+		}
 	}
 	return "";
 }
@@ -5383,6 +5582,10 @@ void UI_FeederSelection(float feederID, int index)
 		uiInfo.previewMovie = -1;
   } else if (feederID == FEEDER_DEMOS) {
 		uiInfo.demoIndex = index;
+  } else if (feederID == FEEDER_MISSIONS) {
+		if (index >= 0 && index < uiInfo.missionCount) {
+			uiInfo.missionIndex = index;
+		}
 	}
 }
 

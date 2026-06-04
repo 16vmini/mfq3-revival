@@ -976,6 +976,10 @@ void SV_GetUserinfo( int index, char *buffer, int bufferSize );
 int  SV_AddBot( int vehicleIndex, int team, const char *name );   // bot-AI integration (sv_bot.c)
 void MF_SpawnTrainingMission( int mission, GameEntity *player );  // training mode (g_bot_cmds.c)
 void MF_TrainingFrame( void );                                    // training mode (g_bot_cmds.c)
+void MF_MissionResetEnemies( void );                             // .mis loader: reset bot-objective list
+int  MF_SpawnMissionBot( int vehicleIndex, int team, vec3_t origin, vec3_t angles ); // .mis loader: spawn flying enemy
+void MF_QueueMissionAirEnemy( int vehicleIndex, int team );       // .mis loader: queue air enemy for player-relative spawn
+void MF_PositionMissionEnemiesNearPlayer( GameEntity *player );   // spawn queued air enemies ahead of the player
 void SV_GetConfigstring( int index, char *buffer, int bufferSize );
 void SV_SetConfigstring (int index, const char *val);
 void SV_GameSendServerCommand( int clientNum, const char *text );

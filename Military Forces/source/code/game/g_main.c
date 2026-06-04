@@ -407,12 +407,12 @@ void G_InitGame( int levelTime, int randomSeed )
 
 	if( g_gametype.integer != GT_MISSION_EDITOR )
 	{
-		// MFQ3 mission scripts (revived server-side spawner)
-		G_LoadMissionScripts();
-
 		// init some MFQ3 stuff
 		//DroneInit();
-		Bot_Init();
+		Bot_Init();		// BEFORE the mission loader: missions can spawn flying bots
+
+		// MFQ3 mission scripts (revived server-side spawner)
+		G_LoadMissionScripts();
 	}
 }
 

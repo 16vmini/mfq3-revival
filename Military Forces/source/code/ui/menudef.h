@@ -73,6 +73,7 @@
 #define FEEDER_FINDPLAYER					0x0e			// find player
 #define FEEDER_CINEMATICS					0x0f			// cinematics
 #define FEEDER_SPECTATOR_LIST				0x10			// spectators
+#define FEEDER_MISSIONS						0x11			// MFQ3 training missions scanned from missions/training/*.mis
 
 // display flags
 #define CG_SHOW_BLUE_TEAM_HAS_REDFLAG     0x00000001

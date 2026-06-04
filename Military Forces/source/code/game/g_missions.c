@@ -104,22 +104,42 @@ void G_LoadMissionScripts()
 	}
 
 	Cvar_VariableStringBuffer( "mapname", mapname, sizeof(mapname) );
-	Com_sprintf( filename, sizeof(filename), "missions/%s/%s.mis", mapname, missionname );
+	// Category-organized path: mf_mission carries the folder, e.g. "training/mission1"
+	// -> missions/training/mission1.mis. The .mis Overview already names its own map.
+	Com_sprintf( filename, sizeof(filename), "missions/%s.mis", missionname );
 
 	if( !G_LoadOverviewAndEntities( filename, &overview, vehicles, installations ) )
 		return;
 
-	// spawn mission vehicles - secondary/bonus targets (extra points, not required)
+	// reset the mission-bot objective list (aircraft enemies are tracked there)
+	MF_MissionResetEnemies();
+
+	// spawn mission vehicles. Aircraft become flying BOT objectives (primary);
+	// everything else stays a static bonus target (optional, extra points).
 	for( i = 0; i < IGME_MAX_VEHICLES/4; ++i )
 	{
 		if( !vehicles[i].used ) break;
-		GameEntity* v = G_SpawnMissionVehicle( vehicles[i].index, vehicles[i].team,
-				vehicles[i].origin, vehicles[i].angles );
-		if( v )
+
+		if( availableVehicles[vehicles[i].index].cat & ( CAT_PLANE | CAT_HELO ) )
 		{
+			/* QUEUE air enemies -- they're spawned fresh ahead of the player when
+			   the human spawns (MF_ClientBegin), so they're a findable intercept
+			   wherever the map drops the player rather than at a fixed far origin. */
+			MF_QueueMissionAirEnemy( vehicles[i].index, vehicles[i].team );
 			spawned++;
-			v->flags_ |= FL_MISSION_BONUS;
-			s_missionBonusTotal++;
+			s_missionTargetsTotal++;
+			s_missionTargetsRemaining++;
+		}
+		else
+		{
+			GameEntity* v = G_SpawnMissionVehicle( vehicles[i].index, vehicles[i].team,
+					vehicles[i].origin, vehicles[i].angles );
+			if( v )
+			{
+				spawned++;
+				v->flags_ |= FL_MISSION_BONUS;
+				s_missionBonusTotal++;
+			}
 		}
 	}
 

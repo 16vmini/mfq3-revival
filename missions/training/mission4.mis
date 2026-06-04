@@ -1,0 +1,38 @@
+// MFQ3 Training Mission 4 - Furball (three bandits)
+Overview
+{
+	map	mfq3_norway
+	gameset	2
+	gametype	0
+	mission	Furball
+	goal	Dogfight
+	order	4
+	description	"Survive and clear multiple bandits."
+}
+Entities
+{
+	Vehicle
+	{
+		Index	0
+		Name	F-16
+		Team	1
+		Origin	-3872.0;6768.0;1500.0
+		Angles	0.0;180.0;0.0
+	}
+	Vehicle
+	{
+		Index	0
+		Name	F-16
+		Team	1
+		Origin	-3372.0;6968.0;1650.0
+		Angles	0.0;180.0;0.0
+	}
+	Vehicle
+	{
+		Index	0
+		Name	F-16
+		Team	1
+		Origin	-4372.0;6968.0;1650.0
+		Angles	0.0;180.0;0.0
+	}
+}

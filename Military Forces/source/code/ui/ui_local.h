@@ -625,6 +625,16 @@ typedef struct {
 #define MAX_DEMOS 256
 #define MAX_MOVIES 256
 #define MAX_PLAYERMODELS 256
+#define MAX_TRAINING_MISSIONS 64
+
+// MFQ3: a single training mission scanned from missions/training/*.mis
+typedef struct {
+	char	fileName[64];		// base name without extension (e.g. "mission1")
+	char	missionName[64];	// Overview "mission" short name
+	char	description[128];	// Overview "description" tagline
+	char	mapName[64];		// Overview "map" -> the map to load
+	int		order;				// Overview "order" -> menu sort key (lower first)
+} missionInfo_t;
 
 
 typedef struct {
@@ -804,6 +814,10 @@ struct uiInfo_t
 	const char *demoList[MAX_DEMOS];
 	int demoCount;
 	int demoIndex;
+
+	missionInfo_t missionList[MAX_TRAINING_MISSIONS];
+	int missionCount;
+	int missionIndex;
 
 	const char *movieList[MAX_MOVIES];
 	int movieCount;

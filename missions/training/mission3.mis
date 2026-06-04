@@ -1,0 +1,23 @@
+// MFQ3 Training Mission 3 - Ground Strike
+// Objective is a ground installation (SAM) -- the engine's native primary target.
+Overview
+{
+	map	mfq3_norway
+	gameset	2
+	gametype	0
+	mission	GroundStrike
+	goal	SearchAndDestroy
+	order	3
+	description	"Destroy the ground target."
+}
+Entities
+{
+	GroundInstallation
+	{
+		Index	0
+		Name	SAM
+		Team	red
+		Origin	-3872.0;6768.0;540.0
+		Angles	0.0;0.0;0.0
+	}
+}
