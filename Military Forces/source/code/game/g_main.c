@@ -65,6 +65,7 @@ vmCvar_t	mf_gameset;
 vmCvar_t	mf_lvcat;
 vmCvar_t	mf_version;
 vmCvar_t	mf_mission;
+vmCvar_t	mf_missionsDone;	// archived list of completed mission ids (progress)
 vmCvar_t	mf_allowNukes;
 
 cvarTable_t		gameCvarTable[] = {
@@ -88,6 +89,7 @@ cvarTable_t		gameCvarTable[] = {
 	{ &mf_version, "mf_version", "unknown", CVAR_SERVERINFO | CVAR_ROM, 0, false  },
 	{ &mf_lvcat, "mf_lvcat", "0", CVAR_SERVERINFO | CVAR_ROM, 0, false },
 	{ &mf_mission, "mf_mission", "default", CVAR_SERVERINFO | CVAR_ARCHIVE | CVAR_LATCH, 0, false  },
+	{ &mf_missionsDone, "mf_missionsDone", "", CVAR_ARCHIVE, 0, false  },
 	{ &mf_allowNukes, "mf_allowNukes", "1", CVAR_SERVERINFO | CVAR_ARCHIVE | CVAR_LATCH, 0, false  },
 
 	// change anytime vars

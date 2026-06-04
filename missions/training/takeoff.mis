@@ -7,7 +7,7 @@ Overview
 	map	mfq3_norway
 	gameset	2
 	gametype	0
-	mission	Take Off
+	mission	"Take Off"
 	goal	TakeOff
 	order	5
 	description	"Roll down the runway, rotate, and climb out to 500 ft."

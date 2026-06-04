@@ -250,9 +250,47 @@ static void G_MissionSendText( const char* msg )
 	SV_GameSendServerCommand( -1, va( "mission_text \"%s\"", ( msg && msg[0] ) ? msg : "" ) );
 }
 
+// whitespace-token membership test (so "mission1" doesn't match "mission10")
+static bool G_TokenInList( const char* list, const char* tok )
+{
+	int			tl = (int)strlen( tok );
+	const char*	p = list;
+	while( *p )
+	{
+		const char* s;
+		while( *p == ' ' || *p == '\t' ) p++;
+		s = p;
+		while( *p && *p != ' ' && *p != '\t' ) p++;
+		if( ( p - s ) == tl && !Q_strncmp( s, tok, tl ) ) return true;
+	}
+	return false;
+}
+
+// Record the current mission as completed in the archived mf_missionsDone list,
+// so the Training menu can mark it done and default to the next one. Replays are
+// still allowed - this only tracks, it never locks anything.
+static void G_MissionRecordComplete( void )
+{
+	char		done[1024];
+	const char*	id = mf_mission.string;		// e.g. "training/takeoff"
+
+	if( !id || !id[0] || !Q_stricmp( id, "none" ) || !Q_stricmp( id, "default" ) )
+		return;
+
+	Cvar_VariableStringBuffer( "mf_missionsDone", done, sizeof(done) );
+	if( G_TokenInList( done, id ) )
+		return;	// already recorded
+
+	if( done[0] ) Q_strcat( done, sizeof(done), " " );
+	Q_strcat( done, sizeof(done), id );
+	Cvar_Set( "mf_missionsDone", done );
+	Com_Printf( "Mission progress: recorded '%s' complete.\n", id );
+}
+
 static void G_MissionSendComplete( int primaryDone, int primaryTotal )
 {
 	s_missionComplete = true;
+	G_MissionRecordComplete();
 	G_MissionSendText( s_completeText );
 	// mission_end <success> <primaryDone> <primaryTotal> <bonusDone> <bonusTotal>
 	SV_GameSendServerCommand( -1, va( "mission_end 1 %d %d %d %d",

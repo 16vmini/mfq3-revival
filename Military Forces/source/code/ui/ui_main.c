@@ -3465,16 +3465,36 @@ records the file base name, the Overview short name, the tagline/description
 and the map to load. Drives FEEDER_MISSIONS in the Training menu.
 ===============
 */
+// whitespace-token membership test (matches the server-side G_TokenInList)
+static bool UI_TokenInList( const char* list, const char* tok )
+{
+	int			tl = (int)strlen( tok );
+	const char*	p = list;
+	while( *p )
+	{
+		const char* s;
+		while( *p == ' ' || *p == '\t' ) p++;
+		s = p;
+		while( *p && *p != ' ' && *p != '\t' ) p++;
+		if( ( p - s ) == tl && !Q_strncmp( s, tok, tl ) ) return true;
+	}
+	return false;
+}
+
 static void UI_LoadMissions()
 {
 	char			fileList[4096];
 	char			*fileName;
 	char			path[MAX_QPATH];
+	char			done[1024];
 	fileHandle_t	f;
 	int				i, len, count, fileSize;
 
 	uiInfo.missionCount = 0;
 	uiInfo.missionIndex = 0;
+
+	// completed-mission progress list (archived cvar set by the server on win)
+	Cvar_VariableStringBuffer( "mf_missionsDone", done, sizeof(done) );
 
 	count = FS_GetFileList( "missions/training", ".mis", fileList, sizeof(fileList) );
 	if ( count > MAX_TRAINING_MISSIONS )
@@ -3523,6 +3543,13 @@ static void UI_LoadMissions()
 				mi->order = 9999;
 			}
 
+			// progress: completed if its id ("training/<file>") is in mf_missionsDone
+			{
+				char id[80];
+				Com_sprintf( id, sizeof(id), "training/%s", mi->fileName );
+				mi->completed = UI_TokenInList( done, id ) ? 1 : 0;
+			}
+
 			uiInfo.missionCount++;
 		}
 
@@ -3543,6 +3570,21 @@ static void UI_LoadMissions()
 					uiInfo.missionList[a] = uiInfo.missionList[b];
 					uiInfo.missionList[b] = tmp;
 				}
+			}
+		}
+	}
+
+	// default the selection to the first NOT-yet-completed mission (so finishing
+	// mission 1 lands you on mission 2), while everything stays replayable. If
+	// all are done, leave it on the first.
+	{
+		int m;
+		for ( m = 0; m < uiInfo.missionCount; m++ )
+		{
+			if ( !uiInfo.missionList[m].completed )
+			{
+				uiInfo.missionIndex = m;
+				break;
 			}
 		}
 	}
@@ -5623,9 +5665,14 @@ const char *UI_FeederItemText(float feederID, int index, int column, qhandle_t *
 		}
 	} else if (feederID == FEEDER_MISSIONS) {
 		if (index >= 0 && index < uiInfo.missionCount) {
-			// column 0 = short name, column 1 = description tagline
+			// column 0 = short name (green tick if completed), column 1 = tagline
 			if (column == 1) {
 				return uiInfo.missionList[index].description;
+			}
+			if (uiInfo.missionList[index].completed) {
+				static char nameBuf[96];
+				Com_sprintf( nameBuf, sizeof(nameBuf), "^2# ^7%s", uiInfo.missionList[index].missionName );
+				return nameBuf;
 			}
 			return uiInfo.missionList[index].missionName;
 		}

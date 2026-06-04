@@ -635,6 +635,7 @@ typedef struct {
 	char	briefing[512];		// Overview "briefing" longer flavor paragraph
 	char	mapName[64];		// Overview "map" -> the map to load
 	int		order;				// Overview "order" -> menu sort key (lower first)
+	int		completed;			// 1 if listed in mf_missionsDone (progress tracking)
 } missionInfo_t;
 
 

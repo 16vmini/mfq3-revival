@@ -951,6 +951,7 @@ extern	vmCvar_t	g_spectSpeed;
 extern  vmCvar_t	mf_gameset;
 extern  vmCvar_t	mf_lvcat;
 extern  vmCvar_t	mf_mission;
+extern  vmCvar_t	mf_missionsDone;
 extern	vmCvar_t	mf_allowNukes;
 
 
