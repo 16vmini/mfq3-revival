@@ -360,6 +360,9 @@ void	Bot_WaypointLoad_f( void );
    Creates a plane bot that circles around the first connected player. */
 void	Bot_AddCircling_f( void );
 
+/* Spawn a stationary ground tank below the player: bot_target */
+void	Bot_AddTank_f( void );
+
 /* Per-frame tick: call from G_RunFrame to process all active bots */
 void	Bot_Frame( void );
 

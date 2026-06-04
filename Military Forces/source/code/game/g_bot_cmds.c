@@ -267,7 +267,7 @@ void Bot_AddCircling_f( void )
 	int firstWpIndex;
 	char wpName[MAX_NAME_LENGTH];
 	float angle;
-	float radius = 2000.0f;
+	float radius = 1200.0f;   /* tighter circle so it stays near you */
 	const int NUM_WAYPOINTS = 8;
 
 	/* Parse arguments */
@@ -333,7 +333,7 @@ void Bot_AddCircling_f( void )
 	/* Spawn the bot near the player (offset slightly above for a plane) */
 	spawnOrigin[0] = playerOrigin[0] + radius;
 	spawnOrigin[1] = playerOrigin[1];
-	spawnOrigin[2] = playerOrigin[2] + 1000.0f;  /* Start airborne */
+	spawnOrigin[2] = playerOrigin[2] + 150.0f;  /* roughly your altitude, easy to engage */
 	VectorSet( spawnAngles, 0, 180, 0 );  /* Face toward center */
 
 	slot = Bot_Spawn( team, vehicleIndex, spawnOrigin, spawnAngles );
@@ -351,7 +351,7 @@ void Bot_AddCircling_f( void )
 		angle = (2.0f * M_PI * i) / NUM_WAYPOINTS;
 		wpPos[0] = playerOrigin[0] + radius * cos( angle );
 		wpPos[1] = playerOrigin[1] + radius * sin( angle );
-		wpPos[2] = playerOrigin[2] + 1000.0f;  /* Same altitude as spawn */
+		wpPos[2] = playerOrigin[2] + 150.0f;  /* same altitude as spawn */
 
 		/* name must be unique per bot, else Bot_AddWaypoint skips the duplicate
 		   and wpIndices end up pointing past the array (OOB write -> crash). */
@@ -376,6 +376,68 @@ void Bot_AddCircling_f( void )
 
 	Com_Printf( "Circling bot added: slot %d, team %d, vehicle %s, %d waypoints around player\n",
 		slot, team, availableVehicles[vehicleIndex].tinyName, NUM_WAYPOINTS );
+}
+
+
+/*
+  Bot_AddTank_f -- Console command: bot_target
+
+  Spawns a STATIONARY enemy ground vehicle on the ground directly below the
+  player. A non-moving target to definitively test gun collision/damage with
+  no tracking required: line up a strafing run, nose on it, fire.
+*/
+void Bot_AddTank_f( void )
+{
+	vec3_t		playerOrigin, spawnOrigin, spawnAngles, down;
+	trace_t		tr;
+	int			team = 1, vehicleIndex = -1, slot, j, i, playerNum = -1;
+	bool		found = false;
+
+	/* find the player to spawn beneath */
+	for( j = 1; j <= theLevel.maxclients_; j++ ) {
+		GameClient *cl = theLevel.getClient( j );
+		if( cl && cl->pers_.connected_ == GameClient::ClientPersistant::CON_CONNECTED &&
+			cl->sess_.sessionTeam_ != ClientBase::TEAM_SPECTATOR ) {
+			GameEntity *pe = theLevel.getEntity( j );
+			if( pe && pe->inuse_ ) {
+				VectorCopy( pe->r.currentOrigin, playerOrigin );
+				playerNum = j; found = true; break;
+			}
+		}
+	}
+	if( !found ) { Com_Printf( S_COLOR_RED "bot_target: no player found\n" ); return; }
+
+	/* pick a modern ground vehicle */
+	for( i = 0; i < bg_numberOfVehicles; i++ ) {
+		if( ( availableVehicles[i].cat & CAT_GROUND ) &&
+			( availableVehicles[i].gameset & MF_GAMESET_MODERN ) ) {
+			vehicleIndex = i; break;
+		}
+	}
+	if( vehicleIndex < 0 ) { Com_Printf( S_COLOR_RED "bot_target: no ground vehicle found\n" ); return; }
+
+	/* spawn ~800 units AHEAD of the player (not on top of him), traced down to
+	   the ground so it sits on flat terrain */
+	{
+		vec3_t fwd, ahead;
+		GameEntity *pe = theLevel.getEntity( playerNum );
+		AngleVectors( pe ? pe->r.currentAngles : vec3_origin, fwd, NULL, NULL );
+		fwd[2] = 0; VectorNormalize( fwd );
+		VectorMA( playerOrigin, 800, fwd, ahead );
+		ahead[2] += 300.0f;            /* start above, trace down */
+		VectorCopy( ahead, down );
+		down[2] -= 10000.0f;
+		SV_Trace( &tr, ahead, NULL, NULL, down, playerNum, MASK_PLAYERSOLID, false );
+		VectorCopy( tr.endpos, spawnOrigin );
+		spawnOrigin[2] += 30.0f;
+	}
+	VectorSet( spawnAngles, 0, 0, 0 );
+
+	slot = Bot_Spawn( team, vehicleIndex, spawnOrigin, spawnAngles );
+	if( slot < 0 ) { Com_Printf( S_COLOR_RED "bot_target: spawn failed\n" ); return; }
+
+	Com_Printf( "bot_target: %s spawned ~800u ahead of you at %.0f %.0f %.0f\n",
+		availableVehicles[vehicleIndex].tinyName, spawnOrigin[0], spawnOrigin[1], spawnOrigin[2] );
 }
 
 

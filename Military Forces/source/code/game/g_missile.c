@@ -549,7 +549,7 @@ void G_MissileImpact( GameEntity *ent, trace_t *trace )
 
 	other = theLevel.getEntity(trace->entityNum);// &g_entities[trace->entityNum];
 
-	if( !other ) 
+	if( !other )
 		return;
 
 	// check for bounce

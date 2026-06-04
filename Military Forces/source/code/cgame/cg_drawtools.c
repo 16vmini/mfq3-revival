@@ -1259,7 +1259,8 @@ void CG_Parse_Reticle_Target( reticle_t * pR )
 		if( pR->pTarget->currentState.modelindex == 255 )
 			pText = va( "^7%s", availableGroundInstallations[pR->pTarget->currentState.modelindex2].tinyName );
 		else
-			pText = va( "^2Drone ^3%s", availableVehicles[pR->pTarget->currentState.modelindex].tinyName );//"^7Drone";
+			pText = va( "^2Drone ^3%s ^7%d%%", availableVehicles[pR->pTarget->currentState.modelindex].tinyName,
+						pR->pTarget->currentState.otherEntityNum2 );
 	}
 	else
 	{
@@ -1268,9 +1269,10 @@ void CG_Parse_Reticle_Target( reticle_t * pR )
 
 #pragma message( "CG_Parse_Reticle_Target() FRIEND label colouring NOT implemented" )
 
-		// create the text
-		pText = va( "^2%s ^3%s", cgs.clientinfo[ client ].name, 
-					availableVehicles[cgs.clientinfo[client].vehicle].tinyName );
+		// create the text (with target health %, networked in otherEntityNum2)
+		pText = va( "^2%s ^3%s ^7%d%%", cgs.clientinfo[ client ].name,
+					availableVehicles[cgs.clientinfo[client].vehicle].tinyName,
+					pR->pTarget->currentState.otherEntityNum2 );
 	}
 
 	// draw label?

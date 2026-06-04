@@ -862,6 +862,16 @@ void ClientThink_real( GameEntity *ent )
 	else
 		BG_PlayerStateToEntityState( &ent->client_->ps_, &ent->s, true );
 
+	// network current health % (0..100) so other clients can draw a floating
+	// health readout above this vehicle (time2 is otherwise unused for vehicles)
+	if( ent->client_->ps_.pm_type == PM_VEHICLE && ent->client_->vehicle_ >= 0 ) {
+		int maxh = availableVehicles[ent->client_->vehicle_].maxhealth;
+		int pct = ( maxh > 0 ) ? ( ent->health_ * 100 / maxh ) : 0;
+		if( pct < 0 ) pct = 0;
+		if( pct > 100 ) pct = 100;
+		ent->s.otherEntityNum2 = pct;
+	}
+
 	SendPendingPredictableEvents( &ent->client_->ps_ );
 
 	// use the snapped origin for linking so it matches client predicted versions

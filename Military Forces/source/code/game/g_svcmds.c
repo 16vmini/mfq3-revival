@@ -501,6 +501,12 @@ bool ConsoleCommand()
 		return true;
 	}
 
+	if (Q_stricmp (cmd, "bot_target") == 0)
+	{
+		Bot_AddTank_f();
+		return true;
+	}
+
 	if (g_dedicated.integer)
 	{
 		if (Q_stricmp (cmd, "say") == 0)

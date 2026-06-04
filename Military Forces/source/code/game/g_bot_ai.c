@@ -486,20 +486,37 @@ static void Bot_DriveVehicle( botState_t *bs )
 	int			i;
 
 	if( !bs || !bs->active ) return;
-	if( !( bs->vehicleCat & ( CAT_PLANE | CAT_HELO ) ) ) return;   /* air only for now */
 
 	ent = theLevel.getEntity( bs->entityNum );
 	if( !ent || !ent->client_ ) return;
 
 	cmd = &ent->client_->pers_.cmd_;
 
-	/* target the current waypoint, else fly straight ahead */
-	if( bs->currentWaypoint >= 0 && bs->currentWaypoint < botGlobals.waypointList.usedWPs ) {
-		VectorCopy( botGlobals.waypointList.waypoints[bs->currentWaypoint].pos, target );
-	} else {
-		AngleVectors( ent->client_->ps_.vehicleAngles, fwd, NULL, NULL );
-		VectorMA( ent->r.currentOrigin, 2000, fwd, target );
+	/* Stationary ground target (bot_target): just kill its velocity each frame so
+	   it can't drift or fall -- no origin-snapping (that caused the bounce). It's
+	   godmode (set in Bot_AddTank_f) so terrain can't crush it. */
+	if( bs->vehicleCat & CAT_GROUND ) {
+		VectorClear( ent->client_->ps_.velocity );
+		cmd->serverTime = theLevel.time_;
+		cmd->forwardmove = 0; cmd->rightmove = 0; cmd->upmove = 0; cmd->buttons = 0;
+		return;
 	}
+
+	if( !( bs->vehicleCat & ( CAT_PLANE | CAT_HELO ) ) ) return;   /* air only beyond here */
+
+	/* GENTLE WIDE CIRCLE: keep a constant easy turn so it stays near the player
+	   and trackable, instead of a tight circle (untrackable) or a straight line
+	   (flies off map). */
+	{
+		vec3_t flat;
+		VectorCopy( ent->client_->ps_.vehicleAngles, flat );
+		flat[PITCH] = 0;   /* level */
+		flat[ROLL]  = 0;
+		flat[YAW]  += 25;  /* gentle continuous turn -> wide circle */
+		AngleVectors( flat, fwd, NULL, NULL );
+		VectorMA( ent->r.currentOrigin, 1200, fwd, target );
+	}
+
 
 	VectorSubtract( target, ent->r.currentOrigin, dir );
 	dist = VectorNormalize( dir );
@@ -523,13 +540,15 @@ static void Bot_DriveVehicle( botState_t *bs )
 	cmd->upmove = 0;
 	cmd->buttons = 0;
 
-	/* throttle up so it actually flies */
-	ent->client_->ps_.fixed_throttle = MF_THROTTLE_MILITARY;
+	/* gentle cruise so it's an easy target to practice on */
+	ent->client_->ps_.fixed_throttle = 6;
 
 	/* shoot when attacking a target */
 	if( bs->state == BOT_STATE_ATTACK && bs->targetEntityNum >= 0 ) {
 		cmd->buttons |= BUTTON_ATTACK;
 	}
+	/* (hitbox enlargement for relaxed detection is done in ClientThink_real,
+	   right after Pmove, so it survives into the bullet-collision pass) */
 }
 
 

@@ -583,7 +583,14 @@ void SV_ClipMoveToEntities( moveclip_t *clip )
 			if ( touch->r.ownerNum == clip->passEntityNum ) {
 				continue;	// don't clip against own missiles
 			}
-			if ( touch->r.ownerNum == passOwnerNum ) {
+			// Only skip "other missiles from our owner" when the owner is a REAL
+			// entity. In this fork entities' ownerNum defaults to 0 (ENTITYNUM_WORLD)
+			// rather than ENTITYNUM_NONE (-1), so without excluding BOTH sentinels
+			// this check matched every player/bot/vehicle (they all read owner 0)
+			// and bullets passed straight through them. Neither NONE nor WORLD is a
+			// legitimate missile owner.
+			if ( passOwnerNum != ENTITYNUM_NONE && passOwnerNum != ENTITYNUM_WORLD &&
+				 touch->r.ownerNum == passOwnerNum ) {
 				continue;	// don't clip against other missiles from our owner
 			}
 		}
