@@ -442,6 +442,91 @@ void Bot_AddTank_f( void )
 
 
 /*
+  Bot_AddType_f -- Console command: bot_add_type <plane|helo|ground|boat> [team]
+
+  Generalized bot spawner used by the in-game Add-Bot menu. Picks a vehicle of
+  the requested category that is valid for the CURRENT gameset (mf_gameset) via
+  the same lookup the player's vehicle-select screen uses, then spawns it:
+    - air (plane/helo): circling overhead ahead of the player (Bot_DriveVehicle
+      flies a gentle circle with no waypoints needed)
+    - ground/boat: stationary, traced to the surface ~800u ahead of the player
+*/
+void Bot_AddType_f( void )
+{
+	char		arg[16], targ[8];
+	vec3_t		playerOrigin, spawnOrigin, spawnAngles;
+	int			team = 1, catIndex = 0, vehicleIndex = -1, slot, j, playerNum = -1;
+	bool		found = false, air = true;
+
+	Q_strncpyz( arg, "plane", sizeof(arg) );
+	if( Cmd_Argc() >= 2 ) {
+		Cmd_ArgvBuffer( 1, arg, sizeof(arg) );
+		if( !Q_stricmp( arg, "helo" ) )                                     { catIndex = 2; air = true;  }
+		else if( !Q_stricmp( arg, "ground" ) || !Q_stricmp( arg, "tank" ) ) { catIndex = 1; air = false; }
+		else if( !Q_stricmp( arg, "boat" ) )                                { catIndex = 4; air = false; }
+		else                                                                { catIndex = 0; air = true;  } /* plane */
+	}
+	if( Cmd_Argc() >= 3 ) {
+		Cmd_ArgvBuffer( 2, targ, sizeof(targ) );
+		team = atoi( targ );
+		if( team < 1 ) team = 1;
+		if( team > 2 ) team = 2;
+	}
+
+	/* find a category vehicle valid for the live gameset (any team) -- reuses
+	   the player's own vehicle-select lookup so bots always match the gameset */
+	vehicleIndex = MF_getIndexOfVehicleEx( -1, G_GetGameset(), MF_TEAM_ANY, catIndex, -1, -1, 0, false );
+	if( vehicleIndex < 0 ) {
+		Com_Printf( S_COLOR_RED "bot_add_type: no '%s' vehicle in this gameset\n", arg );
+		return;
+	}
+
+	/* find the player to spawn near */
+	for( j = 1; j <= theLevel.maxclients_; j++ ) {
+		GameClient *cl = theLevel.getClient( j );
+		if( cl && cl->pers_.connected_ == GameClient::ClientPersistant::CON_CONNECTED &&
+			cl->sess_.sessionTeam_ != ClientBase::TEAM_SPECTATOR ) {
+			GameEntity *pe = theLevel.getEntity( j );
+			if( pe && pe->inuse_ ) {
+				VectorCopy( pe->r.currentOrigin, playerOrigin );
+				playerNum = j; found = true; break;
+			}
+		}
+	}
+	if( !found ) { Com_Printf( S_COLOR_RED "bot_add_type: no player found\n" ); return; }
+
+	if( air ) {
+		/* spawn ahead and above; Bot_DriveVehicle circles it without waypoints */
+		spawnOrigin[0] = playerOrigin[0] + 1200.0f;
+		spawnOrigin[1] = playerOrigin[1];
+		spawnOrigin[2] = playerOrigin[2] + 150.0f;
+		VectorSet( spawnAngles, 0, 180, 0 );
+	} else {
+		/* stationary: trace down to the surface ~800u ahead of the player */
+		vec3_t		fwd, ahead, down;
+		trace_t		tr;
+		GameEntity *pe = theLevel.getEntity( playerNum );
+		AngleVectors( pe ? pe->r.currentAngles : vec3_origin, fwd, NULL, NULL );
+		fwd[2] = 0; VectorNormalize( fwd );
+		VectorMA( playerOrigin, 800, fwd, ahead );
+		ahead[2] += 300.0f;
+		VectorCopy( ahead, down );
+		down[2] -= 10000.0f;
+		SV_Trace( &tr, ahead, NULL, NULL, down, playerNum, MASK_PLAYERSOLID, false );
+		VectorCopy( tr.endpos, spawnOrigin );
+		spawnOrigin[2] += 30.0f;
+		VectorSet( spawnAngles, 0, 0, 0 );
+	}
+
+	slot = Bot_Spawn( team, vehicleIndex, spawnOrigin, spawnAngles );
+	if( slot < 0 ) { Com_Printf( S_COLOR_RED "bot_add_type: spawn failed\n" ); return; }
+
+	Com_Printf( "bot_add_type: %s (%s, team %d) added\n",
+		availableVehicles[vehicleIndex].tinyName, arg, team );
+}
+
+
+/*
 =============================================================================
   COMMAND REGISTRATION
 =============================================================================

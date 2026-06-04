@@ -507,6 +507,12 @@ bool ConsoleCommand()
 		return true;
 	}
 
+	if (Q_stricmp (cmd, "bot_add_type") == 0)
+	{
+		Bot_AddType_f();
+		return true;
+	}
+
 	if (g_dedicated.integer)
 	{
 		if (Q_stricmp (cmd, "say") == 0)

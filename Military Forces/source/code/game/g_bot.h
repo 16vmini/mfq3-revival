@@ -363,6 +363,9 @@ void	Bot_AddCircling_f( void );
 /* Spawn a stationary ground tank below the player: bot_target */
 void	Bot_AddTank_f( void );
 
+/* Spawn a bot of a chosen category for the current gameset: bot_add_type <plane|helo|ground|boat> [team] */
+void	Bot_AddType_f( void );
+
 /* Per-frame tick: call from G_RunFrame to process all active bots */
 void	Bot_Frame( void );
 

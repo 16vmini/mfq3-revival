@@ -2158,47 +2158,6 @@ to keep it in case we have to look something up later
 - old version shall be deleted later though!
 =================
 */
-/*
-=================
-CG_DrawVehicleHealthBars
-
-Floating "NN%" health readout above every other vehicle in the snapshot.
-Health % is networked in entityState.time2 (set in g_active.c ClientThink_real).
-=================
-*/
-static void CG_DrawVehicleHealthBars( void )
-{
-	int num;
-
-	for( num = 0; num < cg.snap->numEntities; num++ )
-	{
-		entityState_t* es = &cg.snap->entities[num];
-		centity_t* cent;
-		vec3_t pt;
-		int x, y;
-		char buf[16];
-		vec4_t col;
-
-		if( es->eType != ET_VEHICLE ) continue;
-		if( es->number == cg.snap->ps.clientNum ) continue;   // not our own vehicle
-
-		cent = &cg_entities[ es->number ];
-		VectorCopy( cent->lerpOrigin, pt );
-		pt[2] += 48.0f;                                       // float above the hull
-		if( !CG_WorldToScreenCoords( pt, &x, &y, true ) ) continue;
-
-		// green when healthy, red when low
-		col[0] = ( es->otherEntityNum2 < 50 ) ? 1.0f : ( 100 - es->otherEntityNum2 ) / 50.0f;
-		col[1] = ( es->otherEntityNum2 > 50 ) ? 1.0f : es->otherEntityNum2 / 50.0f;
-		col[2] = 0.15f;
-		col[3] = 1.0f;
-
-		Com_sprintf( buf, sizeof(buf), "%d%%", es->otherEntityNum2 );
-		CG_DrawSmallStringColor( x - 10, y - 22, buf, col );   // small, tidy
-	}
-}
-
-
 static void CG_Draw2D_MFQ3( void ) {
 
 	// if we are taking a levelshot for the menu, don't draw anything
@@ -2257,7 +2216,6 @@ static void CG_Draw2D_MFQ3( void ) {
 //			CG_DrawCrosshair();
 			CG_DrawCrosshairNames();
 //			CG_DrawReward();
-			CG_DrawVehicleHealthBars();   // floating health % over other vehicles
 		}
     
 	}

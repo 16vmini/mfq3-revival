@@ -563,6 +563,18 @@ void Bot_Frame( void )
 
 		if( !bs->active ) continue;
 
+		/* Drop dead/limbo bots so the AI never processes a stale slot (this was
+		   the multi-bot crash: a killed/respawning bot left an invalid entity). */
+		{
+			GameEntity* be = theLevel.getEntity( bs->entityNum );
+			if( !be || !be->inuse_ || !be->client_ ||
+				be->health_ <= 0 || be->s.eType != ET_VEHICLE ) {
+				bs->active = qfalse;
+				if( botGlobals.numBots > 0 ) botGlobals.numBots--;
+				continue;
+			}
+		}
+
 		/* Check if it's time for this bot to think */
 		/* For simplicity, every frame is fine since FRAMETIME = 100ms = BOT_THINK_INTERVAL */
 		Bot_Think( bs );
