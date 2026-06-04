@@ -963,6 +963,8 @@ void SV_GetServerinfo( char *buffer, int bufferSize );
 void SV_SetUserinfo( int index, const char *val );
 void SV_GetUserinfo( int index, char *buffer, int bufferSize );
 int  SV_AddBot( int vehicleIndex, int team, const char *name );   // bot-AI integration (sv_bot.c)
+void MF_SpawnTrainingMission( int mission, GameEntity *player );  // training mode (g_bot_cmds.c)
+void MF_TrainingFrame( void );                                    // training mode (g_bot_cmds.c)
 void SV_GetConfigstring( int index, char *buffer, int bufferSize );
 void SV_SetConfigstring (int index, const char *val);
 void SV_GameSendServerCommand( int clientNum, const char *text );

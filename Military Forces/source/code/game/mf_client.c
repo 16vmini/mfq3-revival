@@ -215,6 +215,20 @@ void MF_ClientBegin( int clientNum )
 	}
 	G_LogPrintf( "ClientBegin: %i\n", clientNum );
 
+	// Training mode: if a mission is selected, spawn its enemies ahead of the
+	// human player. Bots carry SVF_BOT, so this never re-triggers for the bots
+	// that Bot_Spawn connects (which would recurse).
+	{
+		GameEntity *pe = theLevel.getEntity( clientNum );
+		if( pe && !( pe->r.svFlags & SVF_BOT ) &&
+			client->sess_.sessionTeam_ != ClientBase::TEAM_SPECTATOR )
+		{
+			int tm = Cvar_VariableIntegerValue( "mf_trainingMission" );
+			if( tm > 0 )
+				MF_SpawnTrainingMission( tm, pe );
+		}
+	}
+
 	// count current clients and rank for scoreboard
 	CalculateRanks();
 }

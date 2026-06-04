@@ -1706,6 +1706,9 @@ void G_RunFrame( int levelTime )
 	// run bot AI system
 	Bot_Frame();
 
+	// training mode: detect mission completion (all enemies down)
+	MF_TrainingFrame();
+
 	// see if it is time to do a tournement restart
 	CheckTournament();
 

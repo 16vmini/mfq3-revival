@@ -548,6 +548,15 @@ static void Bot_DriveVehicle( botState_t *bs )
 		if( engaged ) {
 			/* steer straight at the target's current position */
 			VectorCopy( tgt->r.currentOrigin, target );
+		} else if( bs->holdStraight ) {
+			/* fly straight ahead on the current heading -- a dead-simple chase
+			   target (used by the easy training missions) */
+			vec3_t flat;
+			VectorCopy( ent->client_->ps_.vehicleAngles, flat );
+			flat[PITCH] = 0;
+			flat[ROLL]  = 0;
+			AngleVectors( flat, fwd, NULL, NULL );
+			VectorMA( ent->r.currentOrigin, 1200, fwd, target );
 		} else {
 			/* gentle continuous turn -> wide circle, wings level */
 			vec3_t flat;
@@ -568,6 +577,59 @@ static void Bot_DriveVehicle( botState_t *bs )
 		}
 
 		vectoangles( dir, desired );
+
+		/* TERRAIN AVOIDANCE: trace ahead of the nose; if solid world is close,
+		   probe both sides and break toward whichever is MORE open (so it doesn't
+		   turn straight into the obstacle) while pulling the nose up to climb. */
+		{
+			vec3_t	nose, ahead, lang, rang, ldir, rdir, lend, rend, flat;
+			trace_t	tc, tl, tr;
+			VectorCopy( ent->client_->ps_.vehicleAngles, flat );
+			flat[PITCH] = 0;
+			flat[ROLL]  = 0;
+			AngleVectors( flat, nose, NULL, NULL );
+			VectorMA( ent->r.currentOrigin, 1500, nose, ahead );
+			SV_Trace( &tc, ent->r.currentOrigin, NULL, NULL, ahead, ent->s.number, MASK_SOLID, false );
+			if( tc.fraction < 1.0f ) {
+				/* probe 50 deg left and right */
+				VectorCopy( flat, lang ); lang[YAW] += 50.0f;
+				VectorCopy( flat, rang ); rang[YAW] -= 50.0f;
+				AngleVectors( lang, ldir, NULL, NULL );
+				AngleVectors( rang, rdir, NULL, NULL );
+				VectorMA( ent->r.currentOrigin, 1500, ldir, lend );
+				VectorMA( ent->r.currentOrigin, 1500, rdir, rend );
+				SV_Trace( &tl, ent->r.currentOrigin, NULL, NULL, lend, ent->s.number, MASK_SOLID, false );
+				SV_Trace( &tr, ent->r.currentOrigin, NULL, NULL, rend, ent->s.number, MASK_SOLID, false );
+				/* steer toward the side with more clearance (YAW+ = left in Q3);
+				   a straight-flying bot only climbs, it doesn't break course */
+				if( !bs->holdStraight ) {
+					if( tl.fraction >= tr.fraction )
+						desired[YAW] = flat[YAW] + 60.0f;
+					else
+						desired[YAW] = flat[YAW] - 60.0f;
+				}
+				desired[PITCH] = -30.0f;   /* nose up hard (negative pitch climbs) */
+			}
+		}
+
+		/* ALTITUDE FLOOR: trace straight down; if the ground is close below, pull
+		   the nose up so the bot rides up and over rising terrain (mountains)
+		   regardless of which way it's heading. Only ever steepens the climb. */
+		{
+			vec3_t	gdown;
+			trace_t	tg;
+			VectorCopy( ent->r.currentOrigin, gdown );
+			gdown[2] -= 1000.0f;
+			SV_Trace( &tg, ent->r.currentOrigin, NULL, NULL, gdown, ent->s.number, MASK_SOLID, false );
+			if( tg.fraction < 1.0f ) {
+				float agl = 1000.0f * tg.fraction;   /* height above ground */
+				if( agl < 600.0f ) {
+					float climb = -25.0f - ( 600.0f - agl ) * 0.06f;   /* steeper when lower */
+					if( climb < -60.0f ) climb = -60.0f;
+					if( desired[PITCH] > climb ) desired[PITCH] = climb;
+				}
+			}
+		}
 
 		/* build the usercmd so ps_.viewangles resolves to `desired`
 		   (viewangles = SHORT2ANGLE(cmd.angles + delta_angles)) */

@@ -561,3 +561,152 @@ void Bot_RegisterCommands( void )
 	Com_Printf( "Bot commands: bot_add, bot_remove, bot_waypoint_add, bot_waypoint_save, bot_waypoint_load, bot_add_circling\n" );
 	Com_Printf( "  NOTE: These commands must be registered in g_svcmds.c for full functionality.\n" );
 }
+
+/*
+=============================================================================
+  TRAINING MISSIONS
+
+  A lightweight, self-contained training mode used by the Play -> Training
+  submenu. When the player spawns and mf_trainingMission is set, we drop the
+  scenario's enemies ahead of the (human) player and watch them; when the last
+  one dies we center-print "MISSION COMPLETE". This is intentionally simple --
+  the feature/missions spawner will later supersede it with full objective /
+  Complete / Failed screens.
+=============================================================================
+*/
+
+#define MAX_TRAIN_ENEMIES 8
+
+static int  trainMission   = 0;     /* current mission number, 0 = none */
+static int  trainPlayerNum = -1;    /* the human the mission is for */
+static int  trainEnemies[MAX_TRAIN_ENEMIES];
+static int  trainEnemyCount = 0;
+static bool trainDone = false;
+
+
+/*
+  MF_SpawnTrainingMission -- spawn the scenario for `mission` ahead of `player`.
+  Called from MF_ClientBegin for the human player. Bots carry SVF_BOT, so the
+  caller guards against re-entry when these Bot_Spawn calls connect their bots.
+*/
+void MF_SpawnTrainingMission( int mission, GameEntity *player )
+{
+	static bool	spawning = false;   /* re-entrancy guard */
+	vec3_t	fwd, right, pang, spawn, sang, back;
+	int		plane, ground, slot, n, count;
+
+	if( !player || !player->client_ ) return;
+
+	/* Each Bot_Spawn below connects a bot, which runs through MF_ClientBegin ->
+	   MF_ClientSpawn (which transiently clears the new bot's SVF_BOT) -> the
+	   training hook again. The caller's SVF_BOT guard can therefore miss, so
+	   block re-entry here: only the original (human) call spawns the scenario. */
+	if( spawning ) return;
+	spawning = true;
+
+	/* reset mission tracking */
+	trainMission = mission;
+	trainPlayerNum = player->s.number;
+	trainEnemyCount = 0;
+	trainDone = false;
+
+	/* turn the player's radar to AIR so the enemy shows up + missiles can lock */
+	player->client_->ps_.ONOFF = ( player->client_->ps_.ONOFF & ~OO_RADAR ) | OO_RADAR_AIR;
+	player->client_->pers_.lastRadar_ = ( player->client_->ps_.ONOFF & OO_RADAR );
+
+	/* The player's heading: use the spawn VIEW angles -- ps_.vehicleAngles isn't
+	   set until the first Pmove, so it still reads 0 here (which placed enemies
+	   in world +X / behind the player). s.angles/viewangles hold spawn_angles. */
+	VectorCopy( player->client_->ps_.viewangles, pang );
+	pang[PITCH] = 0;
+	pang[ROLL]  = 0;
+	AngleVectors( pang, fwd, right, NULL );
+
+	if( mission == 3 )
+	{
+		/* Ground Strike: a single ground target on the deck ahead */
+		ground = MF_getIndexOfVehicleEx( -1, G_GetGameset(), MF_TEAM_ANY, 1, -1, -1, 0, false );
+		if( ground >= 0 )
+		{
+			trace_t	tr;
+			vec3_t	down;
+			VectorMA( player->r.currentOrigin, 1500, fwd, spawn );
+			spawn[2] += 300;
+			VectorCopy( spawn, down );
+			down[2] -= 12000;
+			SV_Trace( &tr, spawn, NULL, NULL, down, player->s.number, MASK_PLAYERSOLID, false );
+			VectorCopy( tr.endpos, spawn );
+			spawn[2] += 30;
+			VectorSet( sang, 0, pang[YAW] + 180, 0 );
+			slot = Bot_Spawn( 1, ground, spawn, sang );
+			if( slot >= 0 && trainEnemyCount < MAX_TRAIN_ENEMIES )
+				trainEnemies[trainEnemyCount++] = botGlobals.bots[slot].entityNum;
+		}
+		spawning = false;
+		return;
+	}
+
+	/* Intercept / Dogfight / Furball: one or more fighters ahead, facing back */
+	plane = MF_getIndexOfVehicleEx( -1, G_GetGameset(), MF_TEAM_ANY, 0, -1, -1, 0, false );
+	if( plane < 0 ) { spawning = false; return; }
+
+	count = ( mission == 4 ) ? 3 : 1;
+	for( n = 0; n < count; n++ )
+	{
+		VectorMA( player->r.currentOrigin, 500.0f + n * 400.0f, fwd, spawn );
+		VectorMA( spawn, ( n - (count-1) * 0.5f ) * 250.0f, right, spawn );   /* fan out sideways */
+		spawn[2] += 250;   /* a little altitude so it clears nearby terrain */
+		if( mission == 1 )
+		{
+			/* Intercept: passive bandit flying AWAY. With our front-180 vision it
+			   can't see the player closing on its tail, so it won't shoot back --
+			   a clean "line up and gun it" trainer. */
+			VectorSet( sang, 0, pang[YAW], 0 );
+		}
+		else
+		{
+			/* aggressive: nose pointed back at the player */
+			VectorSubtract( player->r.currentOrigin, spawn, back );
+			vectoangles( back, sang );
+			VectorSet( sang, 0, sang[YAW], 0 );
+		}
+		slot = Bot_Spawn( 1, plane, spawn, sang );
+		if( slot >= 0 )
+		{
+			if( mission == 1 )
+				botGlobals.bots[slot].holdStraight = qtrue;   /* easy: flies straight, you chase */
+			if( trainEnemyCount < MAX_TRAIN_ENEMIES )
+				trainEnemies[trainEnemyCount++] = botGlobals.bots[slot].entityNum;
+		}
+	}
+	spawning = false;
+}
+
+
+/*
+  MF_TrainingFrame -- called once per server frame (after Bot_Frame). When every
+  enemy in the active training mission is dead, center-print MISSION COMPLETE.
+*/
+void MF_TrainingFrame( void )
+{
+	int			i, alive = 0;
+	GameEntity	*pe;
+
+	if( trainMission <= 0 || trainDone || trainEnemyCount == 0 ) return;
+
+	for( i = 0; i < trainEnemyCount; i++ )
+	{
+		GameEntity *e = theLevel.getEntity( trainEnemies[i] );
+		if( e && e->inuse_ && e->health_ > 0 && e->s.eType == ET_VEHICLE )
+			alive++;
+	}
+
+	if( alive == 0 )
+	{
+		trainDone = true;
+		pe = theLevel.getEntity( trainPlayerNum );
+		if( pe && pe->client_ )
+			SV_GameSendServerCommand( trainPlayerNum, "cp \"^2MISSION COMPLETE\"" );
+		G_LogPrintf( "Training mission %d complete\n", trainMission );
+	}
+}

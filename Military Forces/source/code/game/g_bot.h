@@ -188,6 +188,7 @@ typedef struct {
 	/* Air vehicle specific */
 	qboolean		wantsTakeoff;		/* bot wants to take off */
 	qboolean		wantsLanding;		/* bot wants to land */
+	qboolean		holdStraight;		/* fly straight ahead instead of loitering in a circle (easy training target) */
 	float			cruiseAltitude;		/* desired flight altitude */
 
 	/* Ground vehicle specific */
