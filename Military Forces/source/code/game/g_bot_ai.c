@@ -156,14 +156,24 @@ void Bot_UpdateState( botState_t *bs )
 		}
 		{
 			GameEntity *target = theLevel.getEntity( bs->targetEntityNum );
+			vec3_t d;
 			if( !target || !target->inuse_ || target->health_ <= 0 ) {
 				bs->targetEntityNum = -1;
 				Bot_SetState( bs, BOT_STATE_PATROL );
 				break;
 			}
+			/* keep distance fresh each frame so engage/disengage tracks motion */
+			VectorSubtract( target->r.currentOrigin, ent->r.currentOrigin, d );
+			bs->targetDist = VectorLength( d );
 		}
-		/* Close enough to attack? */
-		if( bs->targetDist < BOT_SCAN_RADIUS * 0.75f ) {
+		/* target flew away -> forget it and drop back to circling */
+		if( bs->targetDist > BOT_DISENGAGE_RADIUS ) {
+			bs->targetEntityNum = -1;
+			Bot_SetState( bs, BOT_STATE_PATROL );
+			break;
+		}
+		/* close enough to open fire? */
+		if( bs->targetDist < BOT_ATTACK_RADIUS ) {
 			Bot_SetState( bs, BOT_STATE_ATTACK );
 		}
 		/* Health check */
@@ -180,24 +190,29 @@ void Bot_UpdateState( botState_t *bs )
 		}
 		{
 			GameEntity *target = theLevel.getEntity( bs->targetEntityNum );
+			vec3_t d;
 			if( !target || !target->inuse_ || target->health_ <= 0 ) {
 				bs->targetEntityNum = -1;
 				Bot_SetState( bs, BOT_STATE_PATROL );
 				break;
 			}
+			VectorSubtract( target->r.currentOrigin, ent->r.currentOrigin, d );
+			bs->targetDist = VectorLength( d );
 		}
-		/* Combat timeout — re-evaluate */
-		if( theLevel.time_ - bs->combatTimer > BOT_COMBAT_TIMEOUT ) {
+		/* target flew away entirely -> circle again */
+		if( bs->targetDist > BOT_DISENGAGE_RADIUS ) {
+			bs->targetEntityNum = -1;
+			Bot_SetState( bs, BOT_STATE_PATROL );
+			break;
+		}
+		/* drifted out of firing range but still trackable -> chase to re-close */
+		if( bs->targetDist > BOT_ATTACK_RADIUS ) {
 			Bot_SetState( bs, BOT_STATE_CHASE );
 			break;
 		}
 		/* Health check */
 		if( Bot_ShouldFlee( bs ) ) {
 			Bot_SetState( bs, BOT_STATE_FLEE );
-		}
-		/* If target moved out of range, chase again */
-		if( bs->targetDist > BOT_SCAN_RADIUS ) {
-			Bot_SetState( bs, BOT_STATE_CHASE );
 		}
 		break;
 
@@ -259,18 +274,25 @@ int Bot_AcquireTarget( botState_t *bs )
 {
 	GameEntity *ent;
 	GameEntity *candidate;
-	float bestDist = BOT_SCAN_RADIUS + 1;
+	float bestDist = BOT_ENGAGE_RADIUS + 1;
 	float dist;
 	int bestTarget = -1;
 	vec3_t diff;
 	int i, count;
 	int entityList[128];
 	vec3_t mins, maxs;
+	vec3_t botForward, botAngles;
 
 	if( !bs || !bs->active ) return -1;
 
 	ent = theLevel.getEntity( bs->entityNum );
 	if( !ent ) return -1;
+
+	/* the bot's nose direction — used to gate spotting to its front 180 deg
+	   (approach from behind and it won't see you) */
+	if( ent->client_ ) VectorCopy( ent->client_->ps_.vehicleAngles, botAngles );
+	else               VectorCopy( ent->s.apos.trBase, botAngles );
+	AngleVectors( botAngles, botForward, NULL, NULL );
 
 	/* Build a bounding box around the bot's position for area search */
 	VectorSet( mins, ent->r.currentOrigin[0] - BOT_SCAN_RADIUS,
@@ -312,9 +334,20 @@ int Bot_AcquireTarget( botState_t *bs )
 			}
 		}
 
-		/* Distance check */
+		/* Distance check (must be within engage range) */
 		VectorSubtract( candidate->r.currentOrigin, ent->r.currentOrigin, diff );
 		dist = VectorLength( diff );
+		if( dist > BOT_ENGAGE_RADIUS ) continue;
+
+		/* Front-180 vision gate: only spot targets ahead of the nose.
+		   dot(forward, dirToTarget) > 0 == within the forward hemisphere. */
+		if( dist > 1.0f ) {
+			vec3_t dirNorm;
+			VectorScale( diff, 1.0f / dist, dirNorm );
+			if( DotProduct( botForward, dirNorm ) <= BOT_VISION_DOT ) {
+				continue;	/* behind the bot — unseen */
+			}
+		}
 
 		if( dist < bestDist ) {
 			bestDist = dist;
@@ -504,48 +537,61 @@ static void Bot_DriveVehicle( botState_t *bs )
 
 	if( !( bs->vehicleCat & ( CAT_PLANE | CAT_HELO ) ) ) return;   /* air only beyond here */
 
-	/* GENTLE WIDE CIRCLE: keep a constant easy turn so it stays near the player
-	   and trackable, instead of a tight circle (untrackable) or a straight line
-	   (flies off map). */
+	/* Decide where to point: run the target down when engaged, otherwise fly a
+	   gentle wide circle so the bot loiters near the player and stays trackable
+	   (a tight circle is unhittable, a straight line flies off the map). */
 	{
-		vec3_t flat;
-		VectorCopy( ent->client_->ps_.vehicleAngles, flat );
-		flat[PITCH] = 0;   /* level */
-		flat[ROLL]  = 0;
-		flat[YAW]  += 25;  /* gentle continuous turn -> wide circle */
-		AngleVectors( flat, fwd, NULL, NULL );
-		VectorMA( ent->r.currentOrigin, 1200, fwd, target );
-	}
+		GameEntity	*tgt = ( bs->targetEntityNum >= 0 ) ? theLevel.getEntity( bs->targetEntityNum ) : NULL;
+		bool		engaged = ( bs->state == BOT_STATE_CHASE || bs->state == BOT_STATE_ATTACK )
+							  && tgt && tgt->inuse_ && tgt->health_ > 0;
 
+		if( engaged ) {
+			/* steer straight at the target's current position */
+			VectorCopy( tgt->r.currentOrigin, target );
+		} else {
+			/* gentle continuous turn -> wide circle, wings level */
+			vec3_t flat;
+			VectorCopy( ent->client_->ps_.vehicleAngles, flat );
+			flat[PITCH] = 0;
+			flat[ROLL]  = 0;
+			flat[YAW]  += 25;
+			AngleVectors( flat, fwd, NULL, NULL );
+			VectorMA( ent->r.currentOrigin, 1200, fwd, target );
+		}
 
-	VectorSubtract( target, ent->r.currentOrigin, dir );
-	dist = VectorNormalize( dir );
+		VectorSubtract( target, ent->r.currentOrigin, dir );
+		dist = VectorNormalize( dir );
 
-	/* reached the waypoint -> advance along the loop */
-	if( bs->currentWaypoint >= 0 && dist < 500 ) {
-		bs->currentWaypoint = botGlobals.waypointList.waypoints[bs->currentWaypoint].nextWaypointIndex;
-	}
+		/* (waypoint loop advance, only while loitering) */
+		if( !engaged && bs->currentWaypoint >= 0 && dist < 500 ) {
+			bs->currentWaypoint = botGlobals.waypointList.waypoints[bs->currentWaypoint].nextWaypointIndex;
+		}
 
-	vectoangles( dir, desired );
+		vectoangles( dir, desired );
 
-	/* build the usercmd so ps_.viewangles resolves to `desired`
-	   (viewangles = SHORT2ANGLE(cmd.angles + delta_angles)) */
-	cmd->serverTime = theLevel.time_;
-	for( i = 0; i < 3; i++ ) {
-		cmd->angles[i] = ANGLE2SHORT( desired[i] ) - ent->client_->ps_.delta_angles[i];
-	}
-	cmd->angles[ROLL] = (short)( 0 - ent->client_->ps_.delta_angles[ROLL] );  /* keep wings level */
-	cmd->forwardmove = 0;
-	cmd->rightmove = 0;
-	cmd->upmove = 0;
-	cmd->buttons = 0;
+		/* build the usercmd so ps_.viewangles resolves to `desired`
+		   (viewangles = SHORT2ANGLE(cmd.angles + delta_angles)) */
+		cmd->serverTime = theLevel.time_;
+		for( i = 0; i < 3; i++ ) {
+			cmd->angles[i] = ANGLE2SHORT( desired[i] ) - ent->client_->ps_.delta_angles[i];
+		}
+		/* keep wings level while circling; let the pursuit bank/pitch freely */
+		if( !engaged ) {
+			cmd->angles[ROLL] = (short)( 0 - ent->client_->ps_.delta_angles[ROLL] );
+		}
+		cmd->forwardmove = 0;
+		cmd->rightmove = 0;
+		cmd->upmove = 0;
+		cmd->buttons = 0;
 
-	/* gentle cruise so it's an easy target to practice on */
-	ent->client_->ps_.fixed_throttle = 6;
+		/* loiter slowly; push the throttle up to chase a target down */
+		ent->client_->ps_.fixed_throttle = engaged ? 10 : 6;
 
-	/* shoot when attacking a target */
-	if( bs->state == BOT_STATE_ATTACK && bs->targetEntityNum >= 0 ) {
-		cmd->buttons |= BUTTON_ATTACK;
+		/* fire only when actually lined up (front-aligned + fire-rate cooldown) */
+		if( bs->state == BOT_STATE_ATTACK && Bot_ShouldFire( bs ) ) {
+			cmd->buttons |= BUTTON_ATTACK;
+			bs->lastFireTime = theLevel.time_;
+		}
 	}
 	/* (hitbox enlargement for relaxed detection is done in ClientThink_real,
 	   right after Pmove, so it survives into the bullet-collision pass) */

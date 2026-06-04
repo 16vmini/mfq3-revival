@@ -44,6 +44,16 @@ typedef bool qboolean;
 /* Scan radius for target acquisition (world units) */
 #define BOT_SCAN_RADIUS			4000
 
+/* Active-combat engagement tuning (dogfight AI):
+   a circling bot only SPOTS a target within ENGAGE_RADIUS and inside its front
+   180 deg (VISION_DOT). Once locked it closes to ATTACK_RADIUS to open fire and
+   keeps chasing until the target dies or flees past DISENGAGE_RADIUS, at which
+   point it drops back to circling. */
+#define BOT_ENGAGE_RADIUS		3500	/* acquire a target within this range... */
+#define BOT_ATTACK_RADIUS		2500	/* ...then close to here before firing */
+#define BOT_DISENGAGE_RADIUS	5000	/* give up + return to circling beyond this */
+#define BOT_VISION_DOT			0.0f	/* spot only in the front 180 deg (cos 90) */
+
 /* Distance at which a bot considers itself "at" a waypoint */
 #define BOT_WAYPOINT_REACH		128
 
