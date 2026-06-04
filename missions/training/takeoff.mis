@@ -1,0 +1,31 @@
+// MFQ3 Training Mission 5 - Take Off
+// Programmatic objective: no enemies, complete once we climb out.
+// PlayerStart sits on the Norway airstrip (captured via /where); the spawn
+// traces down and seats the jet gear-down for a normal runway takeoff.
+Overview
+{
+	map	mfq3_norway
+	gameset	2
+	gametype	0
+	mission	Take Off
+	goal	TakeOff
+	order	5
+	description	"Roll down the runway, rotate, and climb out to 500 ft."
+	briefing	"Welcome to flight school. You're parked on the Norway airstrip, gear down. Ease the throttle up, build speed down the strip, then pull back gently to rotate and climb away. Reach 500 ft above the field to pass. No bandits today - just you and the jet."
+	success	"Well done - you're airborne! That's a clean takeoff."
+	failure	"You went down before climbing out. Line up and try again."
+}
+Entities
+{
+	PlayerStart
+	{
+		Index	0
+		Origin	-5700.8;5772.9;500.0
+		Angles	0.0;-87.6;0.0
+		Speed	0
+	}
+}
+Objectives
+{
+	Objective { Type altitude  Op >  Value 500  Text "Climb to 500 ft" }
+}

@@ -25,6 +25,16 @@ static int	s_missionBonusDestroyed		= 0;
 static bool	s_missionComplete			= false;
 static bool	s_missionFailed				= false;
 
+// programmatic objectives (.mis "Objectives" block): conditions evaluated each
+// frame; once every one latches true the mission completes (no kills required).
+static mission_objective_t	s_objectives[MAX_MISSION_OBJECTIVES];
+static bool					s_objectiveDone[MAX_MISSION_OBJECTIVES];
+static int					s_numObjectives	= 0;
+
+// optional .mis flavour text shown on the end screens (empty = use defaults)
+static char	s_completeText[128]	= "";
+static char	s_failText[128]		= "";
+
 // .mis PlayerStart: where the human spawns + what they fly (overrides the random
 // deathmatch spawn so the mission's absolute enemy positions line up with us)
 static bool		s_hasPlayerStart			= false;
@@ -109,6 +119,10 @@ void G_LoadMissionScripts()
 	s_missionComplete			= false;
 	s_missionFailed				= false;
 	s_hasPlayerStart			= false;
+	s_numObjectives				= 0;
+	memset( s_objectiveDone, 0, sizeof(s_objectiveDone) );
+	s_completeText[0]			= 0;
+	s_failText[0]				= 0;
 
 	memset( &overview, 0, sizeof(overview) );
 	memset( vehicles, 0, sizeof(vehicles) );
@@ -143,6 +157,16 @@ void G_LoadMissionScripts()
 		VectorCopy( overview.playerAngles, s_playerStartAngles );
 		s_playerStartSpeed = overview.playerSpeed;
 	}
+
+	// store programmatic objectives (evaluated every frame in MF_MissionObjectiveFrame)
+	s_numObjectives = overview.numObjectives;
+	if( s_numObjectives > MAX_MISSION_OBJECTIVES ) s_numObjectives = MAX_MISSION_OBJECTIVES;
+	for( i = 0; i < s_numObjectives; i++ )
+		s_objectives[i] = overview.objectives[i];
+
+	// optional custom end-screen messages
+	Q_strncpyz( s_completeText, overview.completeText, sizeof(s_completeText) );
+	Q_strncpyz( s_failText, overview.failText, sizeof(s_failText) );
 
 	// reset the mission-bot objective list (aircraft enemies are tracked there)
 	MF_MissionResetEnemies();
@@ -217,6 +241,29 @@ void G_MissionExternalBegin( int targets )
 }
 
 
+// Fire the Complete screen + end the level. Shared by destroy-objective missions
+// and programmatic-objective missions (they just pass different "primary" counts).
+// push the optional flavour line (.mis success/failure) to the end screen; sent
+// every time (empty clears any leftover) just before the mission_end banner.
+static void G_MissionSendText( const char* msg )
+{
+	SV_GameSendServerCommand( -1, va( "mission_text \"%s\"", ( msg && msg[0] ) ? msg : "" ) );
+}
+
+static void G_MissionSendComplete( int primaryDone, int primaryTotal )
+{
+	s_missionComplete = true;
+	G_MissionSendText( s_completeText );
+	// mission_end <success> <primaryDone> <primaryTotal> <bonusDone> <bonusTotal>
+	SV_GameSendServerCommand( -1, va( "mission_end 1 %d %d %d %d",
+		primaryDone, primaryTotal, s_missionBonusDestroyed, s_missionBonusTotal ) );
+	SV_GameSendServerCommand( -1, "cp \"Mission complete!\n\"" );
+	Com_Printf( S_COLOR_GREEN "Mission complete - %d/%d primary, %d/%d bonus.\n",
+		primaryDone, primaryTotal, s_missionBonusDestroyed, s_missionBonusTotal );
+	if( !theLevel.intermissiontime_ )
+		BeginIntermission();
+}
+
 // Called from Die_MiscVehicle when an FL_MISSION_TARGET entity is destroyed.
 void G_MissionTargetDestroyed( GameEntity* target )
 {
@@ -235,17 +282,7 @@ void G_MissionTargetDestroyed( GameEntity* target )
 	}
 
 	// all primary objectives destroyed -> mission complete
-	s_missionComplete = true;
-	// mission_end <success> <primaryDone> <primaryTotal> <bonusDone> <bonusTotal>
-	SV_GameSendServerCommand( -1, va( "mission_end 1 %d %d %d %d",
-		s_missionTargetsTotal, s_missionTargetsTotal, s_missionBonusDestroyed, s_missionBonusTotal ) );
-	SV_GameSendServerCommand( -1, "cp \"Mission complete!\n\"" );
-	Com_Printf( S_COLOR_GREEN "Mission complete - %d/%d primary destroyed, %d/%d bonus destroyed.\n",
-		s_missionTargetsTotal, s_missionTargetsTotal, s_missionBonusDestroyed, s_missionBonusTotal );
-
-	// end the level via the standard intermission flow
-	if( !theLevel.intermissiontime_ )
-		BeginIntermission();
+	G_MissionSendComplete( s_missionTargetsTotal, s_missionTargetsTotal );
 }
 
 // Called when the player's aircraft is destroyed during a single-player mission.
@@ -255,11 +292,26 @@ void G_MissionFailed( void )
 
 	if( s_missionComplete || s_missionFailed )
 		return;
-	if( s_missionTargetsTotal == 0 )		// no mission loaded -> nothing to fail
+	if( s_missionTargetsTotal == 0 && s_numObjectives == 0 )	// no mission -> nothing to fail
 		return;
 
 	s_missionFailed = true;
+	if( s_numObjectives > 0 )
+	{
+		int done = 0, k;
+		for( k = 0; k < s_numObjectives; k++ ) if( s_objectiveDone[k] ) done++;
+		primaryDone = done;
+		G_MissionSendText( s_failText );
+		SV_GameSendServerCommand( -1, va( "mission_end 0 %d %d %d %d",
+			primaryDone, s_numObjectives, s_missionBonusDestroyed, s_missionBonusTotal ) );
+		SV_GameSendServerCommand( -1, "cp \"MISSION FAILED\n\"" );
+		Com_Printf( S_COLOR_RED "Mission failed (%d/%d objectives).\n", primaryDone, s_numObjectives );
+		if( !theLevel.intermissiontime_ )
+			BeginIntermission();
+		return;
+	}
 	primaryDone = s_missionTargetsTotal - s_missionTargetsRemaining;
+	G_MissionSendText( s_failText );
 	SV_GameSendServerCommand( -1, va( "mission_end 0 %d %d %d %d",
 		primaryDone, s_missionTargetsTotal, s_missionBonusDestroyed, s_missionBonusTotal ) );
 	SV_GameSendServerCommand( -1, "cp \"MISSION FAILED\n\"" );
@@ -269,6 +321,96 @@ void G_MissionFailed( void )
 	// end the level via the standard intermission flow
 	if( !theLevel.intermissiontime_ )
 		BeginIntermission();
+}
+
+// find the local human (non-bot) player entity for objective evaluation
+static GameEntity* G_MissionFindPlayer( void )
+{
+	int i;
+	for( i = 0; i < theLevel.maxclients_; i++ )
+	{
+		GameEntity* p = theLevel.getEntity( i );
+		if( !p || !p->client_ ) continue;
+		if( p->r.svFlags & SVF_BOT ) continue;
+		if( p->client_->pers_.connected_ != GameClient::ClientPersistant::CON_CONNECTED ) continue;
+		return p;
+	}
+	return NULL;
+}
+
+// player height above the terrain directly below (AGL), world units.
+// Use the playerstate origin (live, authoritative) - the entity-state s.origin
+// lags/stays at spawn for the local player, which froze AGL at gear height.
+static float G_MissionPlayerAGL( GameEntity* p )
+{
+	trace_t	tr;
+	vec3_t	org, down;
+
+	VectorCopy( p->client_->ps_.origin, org );
+	VectorCopy( org, down );
+	down[2] -= 100000.0f;
+	SV_Trace( &tr, org, NULL, NULL, down, p->s.number, MASK_SOLID, false );
+	if( tr.fraction < 1.0f )
+		return org[2] - tr.endpos[2];
+	return org[2];	// nothing below -> fall back to absolute Z
+}
+
+// current measured value for an objective's Type
+static float G_MissionMeasure( const mission_objective_t* obj, GameEntity* p )
+{
+	switch( obj->type )
+	{
+	case MOBJ_ALTITUDE:	return G_MissionPlayerAGL( p );
+	case MOBJ_KILLS:	return (float)( s_missionTargetsTotal - s_missionTargetsRemaining );
+	default:			return 0.0f;
+	}
+}
+
+static bool G_MissionCompare( float v, int op, float threshold )
+{
+	switch( op )
+	{
+	case MOP_GT:	return v >  threshold;
+	case MOP_GE:	return v >= threshold;
+	case MOP_LT:	return v <  threshold;
+	case MOP_LE:	return v <= threshold;
+	case MOP_EQ:	return v == threshold;
+	default:		return false;
+	}
+}
+
+// Called every server frame. Latches each programmatic objective true the first
+// time its condition is met; once all are done the mission completes (no kill
+// needed). New measures plug into G_MissionMeasure - the rest is generic.
+void MF_MissionObjectiveFrame( void )
+{
+	GameEntity*	p;
+	int			i, done = 0;
+
+	if( s_numObjectives == 0 ) return;
+	if( s_missionComplete || s_missionFailed ) return;
+
+	p = G_MissionFindPlayer();
+	if( !p || p->health_ <= 0 ) return;	// no live player -> nothing to measure
+
+	for( i = 0; i < s_numObjectives; i++ )
+	{
+		if( !s_objectiveDone[i] )
+		{
+			float v = G_MissionMeasure( &s_objectives[i], p );
+			if( G_MissionCompare( v, s_objectives[i].op, s_objectives[i].value ) )
+			{
+				s_objectiveDone[i] = true;
+				if( s_objectives[i].text[0] )
+					SV_GameSendServerCommand( -1, va( "cp \"%s\n\"", s_objectives[i].text ) );
+				Com_Printf( "Mission objective met: %s\n", s_objectives[i].text );
+			}
+		}
+		if( s_objectiveDone[i] ) done++;
+	}
+
+	if( done >= s_numObjectives )
+		G_MissionSendComplete( s_numObjectives, s_numObjectives );
 }
 
 // Called every server frame. At a mission end screen (complete or failed),

@@ -17,7 +17,7 @@ Entities
 	PlayerStart
 	{
 		Index	0
-		Origin	-3872.0;4768.0;600.0
+		Origin	-3872.0;4768.0;1600.0
 		Angles	0.0;0.0;0.0
 		Speed	0
 	}

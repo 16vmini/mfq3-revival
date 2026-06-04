@@ -499,6 +499,11 @@ static void CG_ServerCommand( void ) {
 		return;
 	}
 
+	if ( !strcmp( cmd, "mission_text" ) ) {		// MFQ3 missions: optional .mis flavour line
+		CG_MissionEnd_SetText( CG_Argv(1) );
+		return;
+	}
+
 	if ( !strcmp( cmd, "mission_end" ) ) {		// MFQ3 missions: success/fail end screen
 		CG_MissionEnd_Set( atoi( CG_Argv(1) ) != 0, atoi( CG_Argv(2) ), atoi( CG_Argv(3) ),
 			atoi( CG_Argv(4) ), atoi( CG_Argv(5) ) );

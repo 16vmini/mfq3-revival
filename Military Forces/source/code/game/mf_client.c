@@ -203,8 +203,14 @@ void MF_ClientBegin( int clientNum )
 		}
 	}
 
-	// locate ent at a spawn point
-	MF_ClientSpawn( clientNum, 0 );
+	// locate ent at a spawn point. In a mission the local human starts at the .mis
+	// PlayerStart point (passed in explicitly); everyone else picks a map spawn.
+	spawnpoint_t	startPt;
+	const spawnpoint_t *startOverride = NULL;
+	if( client->pers_.localClient_ &&
+		MF_GetMissionPlayerStart( NULL, startPt.origin, startPt.angles ) )
+		startOverride = &startPt;
+	MF_ClientSpawn( clientNum, 0, startOverride );
 
 	if ( client->sess_.sessionTeam_ != ClientBase::TEAM_SPECTATOR ) 
 	{
@@ -253,7 +259,7 @@ GameEntity *SelectSpectatorSpawnPoint( vec3_t origin, vec3_t angles );
 GameEntity *SelectInitialSpawnPoint( vec3_t origin, vec3_t angles );
 
 
-void MF_ClientSpawn( int clientNum, long cs_flags ) 
+void MF_ClientSpawn( int clientNum, long cs_flags, const spawnpoint_t *startOverride )
 {
 	vec3_t	spawn_origin, spawn_angles;
 	int		i;
@@ -261,6 +267,7 @@ void MF_ClientSpawn( int clientNum, long cs_flags )
 	GameClient::ClientSession savedSess;
 	int		persistant[MAX_PERSISTANT];
 	GameEntity	*spawnPoint = 0;
+	bool	usingOverride = ( startOverride != NULL );	// caller-supplied start point
 	int		flags;
 	int		savedPing;
 //	char	*savedAreaBits;
@@ -410,12 +417,15 @@ void MF_ClientSpawn( int clientNum, long cs_flags )
 		}
 	}
 
-	// MFQ3 mission PlayerStart: place the human host at the designed start point
-	// (overrides the random deathmatch spawn so the .mis enemy positions line up)
-	// NOTE: applying the .mis PlayerStart Origin/Angles directly here breaks the
-	// jet's takeoff (the tested map spawn-point flow does extra setup we skip),
-	// so for now the human uses the normal spawn point. PlayerStart still drives
-	// the VEHICLE (above) and is parsed/stored for when this is revisited.
+	// Caller-supplied start point (e.g. a .mis PlayerStart): a point + direction
+	// that simply REPLACES the spawn entity we'd otherwise pick. We don't tag it
+	// landed/airborne - the plane setup below decides from what's under the point
+	// (terrain near = parked takeoff, open air = flying start), like a map spawn.
+	if( usingOverride && !(cs_flags & CS_LASTPOS) )
+	{
+		VectorCopy( startOverride->origin, spawn_origin );
+		VectorCopy( startOverride->angles, spawn_angles );
+	}
 
 	// Do initial vehicle checks
 	// if respawning in current spot, and want to be a boat, check for water!
@@ -514,27 +524,37 @@ void MF_ClientSpawn( int clientNum, long cs_flags )
 		// cat specific stuff
 		if( availableVehicles[vehIndex].cat & CAT_PLANE ) 
 		{
-			// check for landed spawnpoint
+			// check for landed spawnpoint. A .mis PlayerStart traces further (its
+			// coords may not be bang-on) and may land on plain terrain, so a point
+			// placed low over ground parks for takeoff while a high one stays flying.
 			bool landed = false;
 			trace_t	trace;
 			vec3_t	endpos;
 			GameEntity *test;
 			VectorCopy( spawn_origin, endpos );
-			endpos[2] -= 128;
+			endpos[2] -= ( usingOverride ? 1024 : 128 );
 			SV_Trace (&trace, spawn_origin, NULL, NULL, endpos, ENTITYNUM_NONE, MASK_SOLID, false );
-			if( trace.entityNum != ENTITYNUM_NONE ) 
+			if( trace.entityNum != ENTITYNUM_NONE )
 			{
 				test = theLevel.getEntity(trace.entityNum);//&g_entities[trace.entityNum];
-				if( canLandOnIt(test) ) 
+				if( canLandOnIt(test) )
 				{
 					landed = true;
-					spawn_origin[2] = test->r.maxs[2] - availableVehicles[vehIndex].mins[2] + 
+					spawn_origin[2] = test->r.maxs[2] - availableVehicles[vehIndex].mins[2] +
 						availableVehicles[vehIndex].gearheight;
-				}			
+				}
+				else if( usingOverride && ( spawn_origin[2] - trace.endpos[2] ) <= 300.0f )
+				{
+					// near-ground start point: seat the box on the terrain surface
+					// (use the hit point, not world maxs) and park it gear-down
+					landed = true;
+					spawn_origin[2] = trace.endpos[2] - availableVehicles[vehIndex].mins[2] +
+						availableVehicles[vehIndex].gearheight;
+				}
 			}
 			MF_Spawn_Plane( ent, vehIndex, landed );
 		}
-		else if( availableVehicles[vehIndex].cat & CAT_GROUND ) 
+		else if( availableVehicles[vehIndex].cat & CAT_GROUND )
 		{
 			trace_t	trace;
 			vec3_t	endpos;

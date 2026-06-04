@@ -1321,6 +1321,7 @@ void CG_CenterPrint( const char *str, int y, int charWidth );
 // MFQ3 missions: end-of-mission banner, COMPLETE/FAILED (cg_missioncomplete.c)
 void CG_MissionEnd_Clear( void );
 void CG_MissionEnd_Set( bool success, int primaryDone, int primaryTotal, int bonusDone, int bonusTotal );
+void CG_MissionEnd_SetText( const char* msg );
 bool CG_DrawMissionEndBanner( void );
 void CG_DrawActive( stereoFrame_t stereoView );
 void CG_DrawFlagModel( float x, float y, float w, float h, int team, bool force2D );

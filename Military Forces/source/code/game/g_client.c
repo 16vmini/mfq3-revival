@@ -361,8 +361,13 @@ void respawn( GameEntity *ent )
 	// delete old entity
 	theLevel.removeEntity( ent );
 
-	// spawn new one
-	MF_ClientSpawn( clientNum, 0 );
+	// spawn new one - the local human re-spawns at the mission start point if any
+	spawnpoint_t	startPt;
+	const spawnpoint_t *startOverride = NULL;
+	if( ent->client_ && ent->client_->pers_.localClient_ &&
+		MF_GetMissionPlayerStart( NULL, startPt.origin, startPt.angles ) )
+		startOverride = &startPt;
+	MF_ClientSpawn( clientNum, 0, startOverride );
 }
 
 /*
@@ -377,8 +382,8 @@ void switch_vehicle( GameEntity *ent )
 	// delete old entity
 	theLevel.removeEntity( ent );
 
-	// spawn new one
-	MF_ClientSpawn( clientNum, CS_NOKILL | CS_LASTPOS );
+	// spawn new one (CS_LASTPOS keeps the current position, so no start override)
+	MF_ClientSpawn( clientNum, CS_NOKILL | CS_LASTPOS, NULL );
 }
 
 /*

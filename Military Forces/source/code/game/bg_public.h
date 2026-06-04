@@ -1035,6 +1035,31 @@ struct mission_waypoint_t {
 };
 
 // mission scripts
+
+// Programmatic mission objectives: each is a condition "<measure> <op> <value>"
+// evaluated every frame. When ALL objectives latch true, the mission completes -
+// independent of destroying anything. Add new measures by extending the enum and
+// the evaluator (g_missions.c); the .mis syntax stays Type/Op/Value/Text.
+#define MAX_MISSION_OBJECTIVES	8
+typedef enum {
+	MOBJ_NONE = 0,
+	MOBJ_ALTITUDE,		// player height above ground (AGL), world units
+	MOBJ_KILLS,			// mission enemies destroyed
+} missionObjType_t;
+typedef enum {
+	MOP_GT = 0,			// >
+	MOP_GE,				// >=
+	MOP_LT,				// <
+	MOP_LE,				// <=
+	MOP_EQ,				// ==
+} missionObjOp_t;
+struct mission_objective_t {
+	int				type;	// missionObjType_t
+	int				op;		// missionObjOp_t
+	float			value;	// threshold
+	char			text[128];	// shown to the player
+};
+
 struct mission_overview_t {
 	char			mapname[MAX_NAME_LENGTH];
 	int				gameset;
@@ -1042,6 +1067,8 @@ struct mission_overview_t {
 	char			missionname[MAX_NAME_LENGTH];
 	char			objective[MAX_NAME_LENGTH];
 	char			description[128];
+	char			completeText[128];	// .mis "success" - shown on Mission Complete
+	char			failText[128];		// .mis "failure" - shown on Mission Failed
 	bool		valid;
 	// .mis "PlayerStart" entity: where the human spawns + what they fly.
 	// (single start for now; an array would give co-op/multiplayer starts later)
@@ -1050,6 +1077,9 @@ struct mission_overview_t {
 	vec3_t			playerOrigin;
 	vec3_t			playerAngles;
 	float			playerSpeed;	// initial airspeed (world units); 0 = vehicle default
+	// programmatic completion conditions (.mis "Objectives" block)
+	mission_objective_t	objectives[MAX_MISSION_OBJECTIVES];
+	int				numObjectives;
 };
 
 struct mission_groundInstallation_t {

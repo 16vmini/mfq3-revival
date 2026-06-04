@@ -1082,7 +1082,19 @@ Cmd_Where_f
 */
 void Cmd_Where_f( GameEntity *ent )
 {
-	SV_GameSendServerCommand( ent->s.number, va("print \"%s\n\"", vtos( ent->s.origin ) ) );
+	// print the current spot as a ready-to-paste .mis PlayerStart / Vehicle block:
+	// stand (or hover) where you want the start, face the heading, type /where.
+	vec3_t	ang;
+
+	if( ent->client_ )
+		VectorCopy( ent->client_->ps_.viewangles, ang );
+	else
+		VectorClear( ang );
+
+	SV_GameSendServerCommand( ent->s.number,
+		va( "print \"Origin\t%.1f;%.1f;%.1f  Angles\t%.1f;%.1f;%.1f\n\"",
+			ent->s.origin[0], ent->s.origin[1], ent->s.origin[2],
+			ang[0], ang[1], ang[2] ) );
 }
 
 static const char *gameNames[] = {

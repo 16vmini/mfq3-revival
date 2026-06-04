@@ -1709,6 +1709,9 @@ void G_RunFrame( int levelTime )
 	// training mode: detect mission completion (all enemies down)
 	MF_TrainingFrame();
 
+	// programmatic mission objectives (altitude/kills/...): condition-based completion
+	MF_MissionObjectiveFrame();
+
 	// see if it is time to do a tournement restart
 	CheckTournament();
 

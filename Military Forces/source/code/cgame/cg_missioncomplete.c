@@ -15,6 +15,7 @@ static int	s_mePrimaryDone	= 0;
 static int	s_mePrimaryTotal= 0;
 static int	s_meBonusDone	= 0;
 static int	s_meBonusTotal	= 0;
+static char	s_meMessage[128]= "";	// optional .mis flavour line
 
 void CG_MissionEnd_Clear( void )
 {
@@ -24,6 +25,13 @@ void CG_MissionEnd_Clear( void )
 	s_mePrimaryTotal= 0;
 	s_meBonusDone	= 0;
 	s_meBonusTotal	= 0;
+	s_meMessage[0]	= 0;
+}
+
+// the .mis "success"/"failure" line; arrives just before mission_end
+void CG_MissionEnd_SetText( const char* msg )
+{
+	Q_strncpyz( s_meMessage, msg ? msg : "", sizeof(s_meMessage) );
 }
 
 void CG_MissionEnd_Set( bool success, int primaryDone, int primaryTotal, int bonusDone, int bonusTotal )
@@ -59,6 +67,14 @@ bool CG_DrawMissionEndBanner( void )
 	CG_DrawBigStringColor( (SCREEN_WIDTH - (int)strlen(title) * BIGCHAR_WIDTH) / 2, y,
 		title, s_meSuccess ? green : red );
 	y += BIGCHAR_HEIGHT + 16;
+
+	// optional .mis flavour line ("Well done, you took off!")
+	if( s_meMessage[0] )
+	{
+		CG_DrawSmallStringColor( (SCREEN_WIDTH - (int)strlen(s_meMessage) * SMALLCHAR_WIDTH) / 2, y,
+			s_meMessage, colorYellow );
+		y += SMALLCHAR_HEIGHT + 16;
+	}
 
 	// primary objectives
 	Com_sprintf( line, sizeof(line), "Primary objectives  %d / %d", s_mePrimaryDone, s_mePrimaryTotal );

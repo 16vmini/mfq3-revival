@@ -656,6 +656,18 @@ static void MF_ParseOverview( char **buf, mission_overview_t* overview )
 				continue;
 			}
 		}
+		else if( !strcmp( token, "success" ) || !strcmp( token, "complete" ) )
+		{
+			token = COM_ParseExt( buf, false );
+			if( token[0] )
+				Q_strncpyz( overview->completeText, token, sizeof(overview->completeText) );
+		}
+		else if( !strcmp( token, "failure" ) || !strcmp( token, "fail" ) )
+		{
+			token = COM_ParseExt( buf, false );
+			if( token[0] )
+				Q_strncpyz( overview->failText, token, sizeof(overview->failText) );
+		}
 	}
 	MF_CheckMissionScriptOverviewValid(overview, false);// set to true after format change
 }
@@ -936,6 +948,84 @@ static void MF_ParsePlayerStart( char **buf, mission_overview_t* overview )
 	if( overview ) overview->hasPlayerStart = true;
 }
 
+// map a .mis objective "Type" string to a measure enum
+static int MF_ObjTypeFromString( const char *s )
+{
+	if( !Q_stricmp( s, "altitude" ) )	return MOBJ_ALTITUDE;
+	if( !Q_stricmp( s, "kills" ) )		return MOBJ_KILLS;
+	return MOBJ_NONE;
+}
+
+// map a .mis objective "Op" string to a comparator enum
+static int MF_ObjOpFromString( const char *s )
+{
+	if( !strcmp( s, ">" ) )		return MOP_GT;
+	if( !strcmp( s, ">=" ) )	return MOP_GE;
+	if( !strcmp( s, "<" ) )		return MOP_LT;
+	if( !strcmp( s, "<=" ) )	return MOP_LE;
+	if( !strcmp( s, "==" ) || !strcmp( s, "=" ) )	return MOP_EQ;
+	return MOP_GE;	// sensible default
+}
+
+// parse one "Objective { Type .. Op .. Value .. Text .. }" block
+static void MF_ParseObjective( char **buf, mission_objective_t* obj )
+{
+	char	*token;
+
+	token = COM_Parse( buf );
+	if( strcmp( token, "{" ) ) return;
+
+	while( 1 )
+	{
+		token = COM_ParseExt( buf, true );
+		if( !token[0] || !strcmp( token, "}" ) ) break;
+
+		if( !strcmp( token, "Type" ) )
+		{
+			token = COM_ParseExt( buf, false );
+			if( token[0] && obj ) obj->type = MF_ObjTypeFromString( token );
+		}
+		else if( !strcmp( token, "Op" ) )
+		{
+			token = COM_ParseExt( buf, false );
+			if( token[0] && obj ) obj->op = MF_ObjOpFromString( token );
+		}
+		else if( !strcmp( token, "Value" ) )
+		{
+			token = COM_ParseExt( buf, false );
+			if( token[0] && obj ) obj->value = atof( token );
+		}
+		else if( !strcmp( token, "Text" ) )
+		{
+			token = COM_ParseExt( buf, false );
+			if( token[0] && obj ) Q_strncpyz( obj->text, token, sizeof( obj->text ) );
+		}
+	}
+}
+
+// parse the top-level "Objectives { Objective {..} Objective {..} }" block
+static void MF_ParseObjectives( char **buf, mission_overview_t* overview )
+{
+	char	*token;
+
+	token = COM_Parse( buf );
+	if( strcmp( token, "{" ) ) return;
+
+	while( 1 )
+	{
+		token = COM_Parse( buf );
+		if( !token[0] || !strcmp( token, "}" ) ) break;
+
+		if( !strcmp( token, "Objective" ) )
+		{
+			if( overview && overview->numObjectives < MAX_MISSION_OBJECTIVES )
+				MF_ParseObjective( buf, &overview->objectives[overview->numObjectives++] );
+			else
+				MF_ParseObjective( buf, NULL );	// overflow: parse + discard
+		}
+	}
+}
+
 static void MF_ParseEntities( char **buf,
 						  mission_overview_t* overview,
 						  mission_vehicle_t* vehs,
@@ -1022,6 +1112,11 @@ void MF_ParseMissionScripts( char *buf,
 		else if( !strcmp(token, "Entities" ) )
 		{
 			MF_ParseEntities(&buf, overview, vehs, gis);
+			continue;
+		}
+		else if( !strcmp(token, "Objectives" ) )
+		{
+			MF_ParseObjectives(&buf, overview);
 			continue;
 		}
 		else

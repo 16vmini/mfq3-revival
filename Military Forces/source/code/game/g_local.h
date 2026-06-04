@@ -676,6 +676,7 @@ void G_MissionTargetDestroyed( GameEntity* target );
 void G_MissionBonusDestroyed( GameEntity* target );
 void G_MissionFailed( void );
 void G_MissionRunIntermission( void );
+void MF_MissionObjectiveFrame( void );
 //void SP_misc_vehicle (GameEntity *ent);
 //void SP_misc_groundinstallation (GameEntity *ent);
 
@@ -772,9 +773,16 @@ bool SpotWouldTelefrag( GameEntity *spot );
 // mfq3
 // mf_client.c
 //
+// An explicit spawn location handed to MF_ClientSpawn instead of letting it pick
+// a map spawn entity. The function still decides landed vs flying from what's
+// under the point, so this is just "put me here, facing this way".
+typedef struct {
+	vec3_t	origin;
+	vec3_t	angles;
+} spawnpoint_t;
 char *MF_ClientConnect( int clientNum, bool firstTime, bool isBot );
 void MF_ClientBegin( int clientNum );
-void MF_ClientSpawn( int clientNum, long cs_flags);
+void MF_ClientSpawn( int clientNum, long cs_flags, const spawnpoint_t *startOverride );
 
 // mfq3
 // mf_vehiclespawn.c
