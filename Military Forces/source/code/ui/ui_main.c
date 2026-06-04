@@ -2194,10 +2194,140 @@ static void UI_DrawCredits( rectDef_t *rect, float scale, const vec4_t inColor, 
 
 /*
 =================
+UI_SelectedMission
+
+MFQ3: returns the currently selected training mission (the one the briefing
+screen describes), or NULL if the selection is out of range. The briefing
+ownerdraws all read from this.
+=================
+*/
+static missionInfo_t *UI_SelectedMission( void )
+{
+	if ( uiInfo.missionCount > 0 &&
+		 uiInfo.missionIndex >= 0 &&
+		 uiInfo.missionIndex < uiInfo.missionCount )
+	{
+		return &uiInfo.missionList[uiInfo.missionIndex];
+	}
+	return NULL;
+}
+
+/*
+=================
+UI_DrawMissionText
+
+MFQ3: single-line ownerdraw helper for the briefing screen (name / objective /
+map). Uses the same Text_Paint helper the other text ownerdraws use.
+=================
+*/
+static void UI_DrawMissionText( rectDef_t *rect, float scale, const vec4_t color, int textStyle, const char *text )
+{
+	if ( text && text[0] )
+	{
+		Text_Paint( rect->x, rect->y, scale, color, text, 0, 0, textStyle );
+	}
+}
+
+/*
+=================
+UI_DrawMissionBriefing
+
+MFQ3: the long briefing paragraph. The Q3 menu engine has no auto-wrap text
+paint, so we word-wrap manually against the ownerdraw rect width using
+Text_Width to measure each candidate line, then Text_Paint each wrapped line.
+=================
+*/
+static void UI_DrawMissionBriefing( rectDef_t *rect, float scale, const vec4_t color, int textStyle )
+{
+	missionInfo_t	*mi = UI_SelectedMission();
+	char			buf[512];
+	char			line[512];
+	char			*word, *next;
+	float			y;
+	float			lineHeight;
+
+	if ( !mi || !mi->briefing[0] )
+	{
+		return;
+	}
+
+	Q_strncpyz( buf, mi->briefing, sizeof(buf) );
+
+	// one text line is roughly the glyph height; add a little leading
+	lineHeight = Text_Height( "Ay", scale, 0 ) + 4;
+	if ( lineHeight < 10 )
+	{
+		lineHeight = 10;
+	}
+
+	y = rect->y;
+	line[0] = '\0';
+
+	word = buf;
+	while ( word && *word )
+	{
+		char	candidate[512];
+
+		// find end of this word
+		next = word;
+		while ( *next && *next != ' ' )
+		{
+			next++;
+		}
+		if ( *next )
+		{
+			*next = '\0';
+			next++;
+		}
+		else
+		{
+			next = NULL;
+		}
+
+		// build a candidate line = current line + this word
+		if ( line[0] )
+		{
+			Com_sprintf( candidate, sizeof(candidate), "%s %s", line, word );
+		}
+		else
+		{
+			Q_strncpyz( candidate, word, sizeof(candidate) );
+		}
+
+		if ( line[0] && Text_Width( candidate, scale, 0 ) > rect->w )
+		{
+			// flush the current line, start a new one with this word
+			Text_Paint( rect->x, y, scale, color, line, 0, 0, textStyle );
+			y += lineHeight;
+			Q_strncpyz( line, word, sizeof(line) );
+		}
+		else
+		{
+			Q_strncpyz( line, candidate, sizeof(line) );
+		}
+
+		// stop if we have run out of vertical room
+		if ( y > rect->y + rect->h - lineHeight )
+		{
+			break;
+		}
+
+		word = next;
+	}
+
+	// flush the trailing line
+	if ( line[0] && y <= rect->y + rect->h - lineHeight )
+	{
+		Text_Paint( rect->x, y, scale, color, line, 0, 0, textStyle );
+	}
+}
+
+/*
+=================
 UI_OwnerDraw
 =================
 */
-void UI_OwnerDraw(float x, float y, float w, float h, float text_x, float text_y, int ownerDraw, int ownerDrawFlags, 
+void UI_OwnerDraw(float x, float y, float w, float h, float text_x, float text_y, int ownerDraw, int ownerDrawFlags,
 				  int align, float special, float scale, const vec4_t color, qhandle_t shader, 
 				  int textStyle, itemDef_t* item) 
 {
@@ -2365,6 +2495,29 @@ void UI_OwnerDraw(float x, float y, float w, float h, float text_x, float text_y
 		// MFQ3: drawing the credits
 		case UI_CREDITS:
 			UI_DrawCredits(&rect,scale, color, textStyle);
+			break;
+
+		// MFQ3: training mission briefing screen text
+		case UI_MISSION_NAME:
+		{
+			missionInfo_t *mi = UI_SelectedMission();
+			if (mi) UI_DrawMissionText(&rect, scale, color, textStyle, mi->missionName);
+			break;
+		}
+		case UI_MISSION_OBJECTIVE:
+		{
+			missionInfo_t *mi = UI_SelectedMission();
+			if (mi) UI_DrawMissionText(&rect, scale, color, textStyle, mi->description);
+			break;
+		}
+		case UI_MISSION_MAP:
+		{
+			missionInfo_t *mi = UI_SelectedMission();
+			if (mi) UI_DrawMissionText(&rect, scale, color, textStyle, mi->mapName);
+			break;
+		}
+		case UI_MISSION_BRIEFING:
+			UI_DrawMissionBriefing(&rect, scale, color, textStyle);
 			break;
 
     default:
@@ -3279,6 +3432,15 @@ static void UI_ParseMissionOverview( char *buf, missionInfo_t *mi )
 			if ( token[0] )
 			{
 				Q_strncpyz( mi->description, token, sizeof(mi->description) );
+			}
+		}
+		else if ( !strcmp( token, "briefing" ) )
+		{
+			// quoted string comes back as a single token from COM_ParseExt
+			token = COM_ParseExt( p, false );
+			if ( token[0] )
+			{
+				Q_strncpyz( mi->briefing, token, sizeof(mi->briefing) );
 			}
 		}
 		else if ( !strcmp( token, "order" ) )

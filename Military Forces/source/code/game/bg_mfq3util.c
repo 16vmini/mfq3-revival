@@ -793,6 +793,15 @@ static void MF_ParseVehicle( char **buf, mission_vehicle_t* veh )
 				continue;
 			}
 		}
+		else if( !strcmp( token, "Behaviour" ) || !strcmp( token, "Behavior" ) )
+		{
+			token = COM_ParseExt( buf, false );
+			if( token[0] )
+			{
+				veh->behaviour = ( !Q_stricmp( token, "passive" ) ) ? 1 : 0;
+				continue;
+			}
+		}
 		else if( !strcmp( token, "Waypoints" ) )
 		{
 			MF_ParseWaypoints(buf, veh);
@@ -887,9 +896,50 @@ static void MF_ParseGroundInstallation( char **buf, mission_groundInstallation_t
 	gi->used = true;
 }
 
-static void MF_ParseEntities( char **buf, 
-						  mission_vehicle_t* vehs, 
-						  mission_groundInstallation_t* gis ) 
+static void MF_ParsePlayerStart( char **buf, mission_overview_t* overview )
+{
+	char	*token;
+
+	token = COM_Parse( buf );
+	if( strcmp( token, "{" ) ) return;
+
+	while( 1 )
+	{
+		token = COM_ParseExt( buf, true );
+		if( !token[0] || !strcmp( token, "}" ) ) break;
+
+		if( !strcmp( token, "Index" ) )
+		{
+			token = COM_ParseExt( buf, false );
+			if( token[0] && overview ) overview->playerVehicle = atoi( token );
+		}
+		else if( !strcmp( token, "Origin" ) )
+		{
+			token = COM_ParseExt( buf, false );
+			if( token[0] && overview )
+				sscanf( token, "%f;%f;%f", &overview->playerOrigin[0],
+					&overview->playerOrigin[1], &overview->playerOrigin[2] );
+		}
+		else if( !strcmp( token, "Angles" ) )
+		{
+			token = COM_ParseExt( buf, false );
+			if( token[0] && overview )
+				sscanf( token, "%f;%f;%f", &overview->playerAngles[0],
+					&overview->playerAngles[1], &overview->playerAngles[2] );
+		}
+		else if( !strcmp( token, "Speed" ) )
+		{
+			token = COM_ParseExt( buf, false );
+			if( token[0] && overview ) overview->playerSpeed = atof( token );
+		}
+	}
+	if( overview ) overview->hasPlayerStart = true;
+}
+
+static void MF_ParseEntities( char **buf,
+						  mission_overview_t* overview,
+						  mission_vehicle_t* vehs,
+						  mission_groundInstallation_t* gis )
 {
 	char	*token;
 	int		numVeh = 0,
@@ -926,6 +976,11 @@ static void MF_ParseEntities( char **buf,
 		{
 			MF_ParseGroundInstallation(buf, &gis[numGI]);
 			++numGI;
+			continue;
+		}
+		else if( !strcmp(token, "PlayerStart" ) )
+		{
+			MF_ParsePlayerStart(buf, overview);
 			continue;
 		}
 		else if( !strcmp( token, "}" ) ) 
@@ -966,7 +1021,7 @@ void MF_ParseMissionScripts( char *buf,
 		}
 		else if( !strcmp(token, "Entities" ) )
 		{
-			MF_ParseEntities(&buf, vehs, gis);
+			MF_ParseEntities(&buf, overview, vehs, gis);
 			continue;
 		}
 		else

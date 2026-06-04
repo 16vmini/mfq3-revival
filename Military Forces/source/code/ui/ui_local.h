@@ -631,7 +631,8 @@ typedef struct {
 typedef struct {
 	char	fileName[64];		// base name without extension (e.g. "mission1")
 	char	missionName[64];	// Overview "mission" short name
-	char	description[128];	// Overview "description" tagline
+	char	description[128];	// Overview "description" tagline (one-line objective)
+	char	briefing[512];		// Overview "briefing" longer flavor paragraph
 	char	mapName[64];		// Overview "map" -> the map to load
 	int		order;				// Overview "order" -> menu sort key (lower first)
 } missionInfo_t;

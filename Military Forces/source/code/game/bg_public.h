@@ -1038,11 +1038,18 @@ struct mission_waypoint_t {
 struct mission_overview_t {
 	char			mapname[MAX_NAME_LENGTH];
 	int				gameset;
-	int				gametype;			
+	int				gametype;
 	char			missionname[MAX_NAME_LENGTH];
 	char			objective[MAX_NAME_LENGTH];
 	char			description[128];
 	bool		valid;
+	// .mis "PlayerStart" entity: where the human spawns + what they fly.
+	// (single start for now; an array would give co-op/multiplayer starts later)
+	bool			hasPlayerStart;
+	int				playerVehicle;	// availableVehicles index
+	vec3_t			playerOrigin;
+	vec3_t			playerAngles;
+	float			playerSpeed;	// initial airspeed (world units); 0 = vehicle default
 };
 
 struct mission_groundInstallation_t {
@@ -1062,6 +1069,7 @@ struct mission_vehicle_t {
 	int				team;
 	vec3_t			origin;
 	vec3_t			angles;
+	int				behaviour;		// 0 = aggressive (default), 1 = passive target  (.mis "Behaviour")
 	mission_waypoint_t waypoints[IGME_MAX_WAYPOINTS];
 };
 

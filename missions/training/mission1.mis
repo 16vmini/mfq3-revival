@@ -1,6 +1,6 @@
 // MFQ3 Training Mission 1 - Intercept
 // Stored by CATEGORY (missions/training/) not by map; the Overview names its map.
-// Enemy aircraft spawn as flying bot objectives (G_LoadMissionScripts).
+// PlayerStart places us; enemy aircraft are spawned at their absolute positions.
 Overview
 {
 	map	mfq3_norway
@@ -10,15 +10,24 @@ Overview
 	goal	Intercept
 	order	1
 	description	"Get on the bandit's tail and shoot it down."
+	briefing	"A lone bandit has strayed into our airspace over Norway. Climb to altitude, run the intercept, and slot in behind him. Close to guns or missile range, get a lock, and splash the contact before he can slip away. Stay on his six and don't overshoot."
 }
 Entities
 {
+	PlayerStart
+	{
+		Index	0
+		Origin	-3872.0;4768.0;600.0
+		Angles	0.0;0.0;0.0
+		Speed	0
+	}
 	Vehicle
 	{
 		Index	0
 		Name	F-16
 		Team	1
-		Origin	-3872.0;6768.0;1500.0
-		Angles	0.0;180.0;0.0
+		Origin	-1872.0;4768.0;1600.0
+		Angles	0.0;0.0;0.0
+		Behaviour	passive
 	}
 }

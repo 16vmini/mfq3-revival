@@ -280,6 +280,16 @@ void MF_ClientSpawn( int clientNum, long cs_flags )
 	// vehicle index for next spawning
 	int vehIndex = atoi( Info_ValueForKey( userinfo, "cg_nextVehicle" ) );
 
+	// MFQ3 mission PlayerStart: the human host flies the .mis-specified jet
+	{
+		GameClient* mcl = theLevel.getClient( clientNum );
+		int psVeh;
+		if( mcl && mcl->pers_.localClient_ &&
+			MF_GetMissionPlayerStart( &psVeh, NULL, NULL ) &&
+			psVeh >= 0 && psVeh < bg_numberOfVehicles )
+			vehIndex = psVeh;
+	}
+
 	GameEntity* ent;
 	switch( availableVehicles[vehIndex].cat )
 	{
@@ -400,6 +410,13 @@ void MF_ClientSpawn( int clientNum, long cs_flags )
 		}
 	}
 
+	// MFQ3 mission PlayerStart: place the human host at the designed start point
+	// (overrides the random deathmatch spawn so the .mis enemy positions line up)
+	// NOTE: applying the .mis PlayerStart Origin/Angles directly here breaks the
+	// jet's takeoff (the tested map spawn-point flow does extra setup we skip),
+	// so for now the human uses the normal spawn point. PlayerStart still drives
+	// the VEHICLE (above) and is parsed/stored for when this is revisited.
+
 	// Do initial vehicle checks
 	// if respawning in current spot, and want to be a boat, check for water!
 	if(vehIndex >= 0 && (cs_flags & CS_LASTPOS && availableVehicles[vehIndex].cat & CAT_BOAT) ) 
@@ -516,7 +533,7 @@ void MF_ClientSpawn( int clientNum, long cs_flags )
 				}			
 			}
 			MF_Spawn_Plane( ent, vehIndex, landed );
-		} 
+		}
 		else if( availableVehicles[vehIndex].cat & CAT_GROUND ) 
 		{
 			trace_t	trace;

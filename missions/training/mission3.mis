@@ -9,6 +9,7 @@ Overview
 	goal	SearchAndDestroy
 	order	3
 	description	"Destroy the ground target."
+	briefing	"Enemy air defenses have moved a SAM site into the valley and it is threatening our flights. Your job is to take it out. Roll in on the ground installation, line up your run, and put ordnance on target. Mind your altitude on the egress and don't fly into the dirt."
 }
 Entities
 {

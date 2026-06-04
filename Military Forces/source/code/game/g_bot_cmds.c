@@ -589,6 +589,7 @@ static bool trainDone = false;
    map drops the player -- spawning-relative is what the hard-coded version did). */
 static int  missionPendingVeh[MAX_TRAIN_ENEMIES];
 static int  missionPendingTeam[MAX_TRAIN_ENEMIES];
+static bool missionPendingAggro[MAX_TRAIN_ENEMIES];   /* face + engage the player vs passive target */
 static int  missionPendingCount = 0;
 
 
@@ -706,16 +707,18 @@ void MF_MissionResetEnemies( void )
 	missionPendingCount = 0;
 }
 
-/* .mis loader: queue an air enemy to be spawned ahead of the player on spawn */
-void MF_QueueMissionAirEnemy( int vehicleIndex, int team )
+/* .mis loader: queue an air enemy to be spawned ahead of the player on spawn.
+   aggressive=true -> faces the player and engages; false -> passive straight-flier. */
+void MF_QueueMissionAirEnemy( int vehicleIndex, int team, bool aggressive )
 {
 	if( missionPendingCount >= MAX_TRAIN_ENEMIES ) return;
-	missionPendingVeh[missionPendingCount]  = vehicleIndex;
-	missionPendingTeam[missionPendingCount] = team;
+	missionPendingVeh[missionPendingCount]   = vehicleIndex;
+	missionPendingTeam[missionPendingCount]  = team;
+	missionPendingAggro[missionPendingCount] = aggressive;
 	missionPendingCount++;
 }
 
-int MF_SpawnMissionBot( int vehicleIndex, int team, vec3_t origin, vec3_t angles )
+int MF_SpawnMissionBot( int vehicleIndex, int team, vec3_t origin, vec3_t angles, bool passive )
 {
 	int slot;
 
@@ -742,6 +745,9 @@ int MF_SpawnMissionBot( int vehicleIndex, int team, vec3_t origin, vec3_t angles
 	slot = Bot_Spawn( team, vehicleIndex, origin, angles );
 	if( slot < 0 ) return -1;
 
+	if( passive )
+		botGlobals.bots[slot].holdStraight = qtrue;   /* easy straight-flying target */
+
 	trainEnemyArmed[trainEnemyCount] = false;   /* confirmed alive before any kill counts */
 	trainEnemies[trainEnemyCount++] = botGlobals.bots[slot].entityNum;
 	return botGlobals.bots[slot].entityNum;
@@ -759,8 +765,8 @@ void MF_PositionMissionEnemiesNearPlayer( GameEntity *player )
 {
 	static bool	spawning = false;   /* re-entrancy guard: the bots we spawn connect
 	                                   and re-enter MF_ClientBegin -> here */
-	vec3_t	fwd, right, pang, spawn, sang;
-	int		i, s, en;
+	vec3_t	fwd, right, pang, spawn, sang, back;
+	int		i;
 
 	if( !player || !player->client_ || missionPendingCount == 0 ) return;
 	if( spawning ) return;
@@ -773,23 +779,29 @@ void MF_PositionMissionEnemiesNearPlayer( GameEntity *player )
 
 	for( i = 0; i < missionPendingCount; i++ )
 	{
-		VectorMA( player->r.currentOrigin, 600.0f + i * 400.0f, fwd, spawn );
+		bool aggro = missionPendingAggro[i];
+
+		/* aggressive enemies start farther out for a head-on merge; passive ones
+		   spawn close so the player slides onto their tail */
+		VectorMA( player->r.currentOrigin, ( aggro ? 1500.0f : 600.0f ) + i * 400.0f, fwd, spawn );
 		VectorMA( spawn, ( i - (missionPendingCount-1) * 0.5f ) * 250.0f, right, spawn );
 		spawn[2] += 150.0f;
-		VectorSet( sang, 0, pang[YAW], 0 );   /* face away -> player slides onto its tail */
+
+		if( aggro )
+		{
+			/* nose pointed back at the player -> the combat AI engages */
+			VectorSubtract( player->r.currentOrigin, spawn, back );
+			vectoangles( back, sang );
+			VectorSet( sang, 0, sang[YAW], 0 );
+		}
+		else
+		{
+			VectorSet( sang, 0, pang[YAW], 0 );   /* face away -> easy intercept */
+		}
 
 		/* spawn fresh ahead of the player (MF_SpawnMissionBot tracks it in
-		   trainEnemies[] for the objective counter) */
-		en = MF_SpawnMissionBot( missionPendingVeh[i], missionPendingTeam[i], spawn, sang );
-		if( en >= 0 )
-		{
-			for( s = 0; s < MAX_BOTS; s++ )
-				if( botGlobals.bots[s].active && botGlobals.bots[s].entityNum == en )
-				{
-					botGlobals.bots[s].holdStraight = qtrue;   /* easy straight target */
-					break;
-				}
-		}
+		   trainEnemies[] for the objective counter; passive -> holdStraight) */
+		MF_SpawnMissionBot( missionPendingVeh[i], missionPendingTeam[i], spawn, sang, !aggro );
 	}
 
 	missionPendingCount = 0;   /* consumed */

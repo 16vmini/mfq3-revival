@@ -8,6 +8,7 @@ Overview
 	goal	Dogfight
 	order	4
 	description	"Survive and clear multiple bandits."
+	briefing	"You're outnumbered. Three hostile fighters are inbound and this is going to be a furball. Don't fixate on a single target -- keep your head on a swivel, use the vertical, and never bleed all your energy in one turn. Pick them off one at a time and survive to clear the airspace."
 }
 Entities
 {

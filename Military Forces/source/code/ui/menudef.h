@@ -265,6 +265,11 @@
 #define	UI_PREVIEW_VEHICLE 257
 #define UI_NETGAMESET 258
 #define	UI_CREDITS 259
+// MFQ3: training mission briefing screen ownerdraws (read uiInfo.missionList[missionIndex])
+#define UI_MISSION_NAME 260
+#define UI_MISSION_BRIEFING 261
+#define UI_MISSION_OBJECTIVE 262
+#define UI_MISSION_MAP 263
 
 #define VOICECHAT_GETFLAG			"getflag"				// command someone to get the flag
 #define VOICECHAT_OFFENSE			"offense"				// command someone to go on offense

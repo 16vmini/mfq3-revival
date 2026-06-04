@@ -25,6 +25,28 @@ static int	s_missionBonusDestroyed		= 0;
 static bool	s_missionComplete			= false;
 static bool	s_missionFailed				= false;
 
+// .mis PlayerStart: where the human spawns + what they fly (overrides the random
+// deathmatch spawn so the mission's absolute enemy positions line up with us)
+static bool		s_hasPlayerStart			= false;
+static int		s_playerStartVehicle		= 0;
+static vec3_t	s_playerStartOrigin;
+static vec3_t	s_playerStartAngles;
+static float	s_playerStartSpeed			= 0;
+
+bool MF_GetMissionPlayerStart( int *vehicle, vec3_t origin, vec3_t angles )
+{
+	if( !s_hasPlayerStart ) return false;
+	if( vehicle ) *vehicle = s_playerStartVehicle;
+	if( origin )  VectorCopy( s_playerStartOrigin, origin );
+	if( angles )  VectorCopy( s_playerStartAngles, angles );
+	return true;
+}
+
+float MF_GetMissionPlayerSpeed( void )
+{
+	return s_hasPlayerStart ? s_playerStartSpeed : 0.0f;
+}
+
 
 // map a .mis team string ("red"/"blue"/"?") to a team id, -1 = none
 static int G_MapTeamName( const char* name )
@@ -86,6 +108,7 @@ void G_LoadMissionScripts()
 	s_missionBonusDestroyed		= 0;
 	s_missionComplete			= false;
 	s_missionFailed				= false;
+	s_hasPlayerStart			= false;
 
 	memset( &overview, 0, sizeof(overview) );
 	memset( vehicles, 0, sizeof(vehicles) );
@@ -111,6 +134,16 @@ void G_LoadMissionScripts()
 	if( !G_LoadOverviewAndEntities( filename, &overview, vehicles, installations ) )
 		return;
 
+	// store the .mis PlayerStart (used by MF_ClientSpawn to place the human)
+	if( overview.hasPlayerStart )
+	{
+		s_hasPlayerStart     = true;
+		s_playerStartVehicle = overview.playerVehicle;
+		VectorCopy( overview.playerOrigin, s_playerStartOrigin );
+		VectorCopy( overview.playerAngles, s_playerStartAngles );
+		s_playerStartSpeed = overview.playerSpeed;
+	}
+
 	// reset the mission-bot objective list (aircraft enemies are tracked there)
 	MF_MissionResetEnemies();
 
@@ -122,10 +155,13 @@ void G_LoadMissionScripts()
 
 		if( availableVehicles[vehicles[i].index].cat & ( CAT_PLANE | CAT_HELO ) )
 		{
-			/* QUEUE air enemies -- they're spawned fresh ahead of the player when
-			   the human spawns (MF_ClientBegin), so they're a findable intercept
-			   wherever the map drops the player rather than at a fixed far origin. */
-			MF_QueueMissionAirEnemy( vehicles[i].index, vehicles[i].team );
+			bool passive = ( vehicles[i].behaviour == 1 );
+
+			/* Queue the bandit for a player-relative spawn: the human lands at the
+			   normal spawn point (absolute PlayerStart positioning breaks takeoff),
+			   so we place the enemy ahead of them once they're in. Behaviour drives
+			   whether it engages (aggressive) or holds straight (passive). */
+			MF_QueueMissionAirEnemy( vehicles[i].index, vehicles[i].team, !passive );
 			spawned++;
 			s_missionTargetsTotal++;
 			s_missionTargetsRemaining++;

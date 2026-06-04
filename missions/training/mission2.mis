@@ -8,6 +8,7 @@ Overview
 	goal	Dogfight
 	order	2
 	description	"Defeat a maneuvering enemy fighter."
+	briefing	"This time the bandit knows you're coming and he will fight back. Expect hard breaks, energy fights, and reversals. Manage your speed, keep your nose on him through the turns, and take the shot when the angles line up. Win the dogfight and clear the skies."
 }
 Entities
 {
