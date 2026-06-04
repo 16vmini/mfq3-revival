@@ -1,0 +1,37 @@
+// MFQ3 Training Mission 6 - Waypoint Run
+// Fly-through gate course. Each Checkpoint is a gate; pass within its Radius in
+// order. A spinning marker shows the current target gate (placeholder model for
+// now). The MOBJ_WAYPOINTS objective completes the mission when all are cleared.
+Overview
+{
+	map	mfq3_norway
+	gameset	2
+	gametype	0
+	mission	"Waypoint Run"
+	goal	Waypoints
+	order	6
+	description	"Fly through all the gates in order."
+	briefing	"Time to fly the course. A series of gates is laid out over Norway - a spinning marker shows your next one. Fly through each gate in order; the marker jumps ahead as you clear them. Smooth lines, don't overshoot. Clear all the gates to finish."
+	success	"Course complete - nice flying through every gate!"
+	failure	"You went down before finishing the course. Line up and try again."
+}
+Entities
+{
+	PlayerStart
+	{
+		Index	0
+		Origin	-3872.0;4768.0;2000.0
+		Angles	0.0;270.0;0.0
+		Speed	0
+	}
+}
+Checkpoints
+{
+	Checkpoint { Origin -3872.0;1500.0;2000.0   Radius 400 }
+	Checkpoint { Origin -3872.0;-1500.0;2000.0  Radius 400 }
+	Checkpoint { Origin -3872.0;-4000.0;2000.0  Radius 400 }
+}
+Objectives
+{
+	Objective { Type waypoints  Op >=  Value 3  Text "Fly through all gates" }
+}

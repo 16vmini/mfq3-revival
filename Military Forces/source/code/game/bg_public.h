@@ -1045,6 +1045,7 @@ typedef enum {
 	MOBJ_NONE = 0,
 	MOBJ_ALTITUDE,		// player height above ground (AGL), world units
 	MOBJ_KILLS,			// mission enemies destroyed
+	MOBJ_WAYPOINTS,		// .mis checkpoints flown through (in sequence)
 } missionObjType_t;
 typedef enum {
 	MOP_GT = 0,			// >
@@ -1058,6 +1059,14 @@ struct mission_objective_t {
 	int				op;		// missionObjOp_t
 	float			value;	// threshold
 	char			text[128];	// shown to the player
+};
+
+// .mis "Checkpoints" block: fly-through gates for a waypoint course. The player
+// passes within radius of each in order; a MOBJ_WAYPOINTS objective counts them.
+#define MAX_MISSION_CHECKPOINTS	16
+struct mission_checkpoint_t {
+	vec3_t			origin;
+	float			radius;		// pass within this distance to clear the gate
 };
 
 struct mission_overview_t {
@@ -1080,6 +1089,9 @@ struct mission_overview_t {
 	// programmatic completion conditions (.mis "Objectives" block)
 	mission_objective_t	objectives[MAX_MISSION_OBJECTIVES];
 	int				numObjectives;
+	// fly-through gates (.mis "Checkpoints" block)
+	mission_checkpoint_t checkpoints[MAX_MISSION_CHECKPOINTS];
+	int				numCheckpoints;
 };
 
 struct mission_groundInstallation_t {

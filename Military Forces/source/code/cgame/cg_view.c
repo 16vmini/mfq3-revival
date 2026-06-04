@@ -680,6 +680,7 @@ void CG_DrawActiveFrame( int serverTime, stereoFrame_t stereoView, bool demoPlay
 		CG_AddPacketEntities();			// adter calcViewValues, so predicted player state is correct
 		CG_AddMarks();
 		CG_AddLocalEntities();
+		CG_AddMissionGate();			// waypoint-mission gate marker
 
 
 		pw.systems[0].pos[0] = sin((float)cg.time/100)*10;

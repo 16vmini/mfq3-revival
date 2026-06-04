@@ -504,6 +504,12 @@ static void CG_ServerCommand( void ) {
 		return;
 	}
 
+	if ( !strcmp( cmd, "mission_gate" ) ) {		// MFQ3 missions: current fly-through gate
+		CG_MissionGate_Set( atof(CG_Argv(1)), atof(CG_Argv(2)), atof(CG_Argv(3)),
+			atof(CG_Argv(4)), atoi(CG_Argv(5)), atoi(CG_Argv(6)) );
+		return;
+	}
+
 	if ( !strcmp( cmd, "mission_end" ) ) {		// MFQ3 missions: success/fail end screen
 		CG_MissionEnd_Set( atoi( CG_Argv(1) ) != 0, atoi( CG_Argv(2) ), atoi( CG_Argv(3) ),
 			atoi( CG_Argv(4) ), atoi( CG_Argv(5) ) );

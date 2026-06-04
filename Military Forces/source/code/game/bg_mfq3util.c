@@ -953,6 +953,7 @@ static int MF_ObjTypeFromString( const char *s )
 {
 	if( !Q_stricmp( s, "altitude" ) )	return MOBJ_ALTITUDE;
 	if( !Q_stricmp( s, "kills" ) )		return MOBJ_KILLS;
+	if( !Q_stricmp( s, "waypoints" ) )	return MOBJ_WAYPOINTS;
 	return MOBJ_NONE;
 }
 
@@ -1022,6 +1023,58 @@ static void MF_ParseObjectives( char **buf, mission_overview_t* overview )
 				MF_ParseObjective( buf, &overview->objectives[overview->numObjectives++] );
 			else
 				MF_ParseObjective( buf, NULL );	// overflow: parse + discard
+		}
+	}
+}
+
+// parse one "Checkpoint { Origin x;y;z  Radius r }" gate
+static void MF_ParseCheckpoint( char **buf, mission_checkpoint_t* cp )
+{
+	char	*token;
+
+	if( cp ) cp->radius = 300.0f;	// default gate radius
+
+	token = COM_Parse( buf );
+	if( strcmp( token, "{" ) ) return;
+
+	while( 1 )
+	{
+		token = COM_ParseExt( buf, true );
+		if( !token[0] || !strcmp( token, "}" ) ) break;
+
+		if( !strcmp( token, "Origin" ) )
+		{
+			token = COM_ParseExt( buf, false );
+			if( token[0] && cp )
+				sscanf( token, "%f;%f;%f", &cp->origin[0], &cp->origin[1], &cp->origin[2] );
+		}
+		else if( !strcmp( token, "Radius" ) )
+		{
+			token = COM_ParseExt( buf, false );
+			if( token[0] && cp ) cp->radius = atof( token );
+		}
+	}
+}
+
+// parse the top-level "Checkpoints { Checkpoint {..} ... }" block
+static void MF_ParseCheckpoints( char **buf, mission_overview_t* overview )
+{
+	char	*token;
+
+	token = COM_Parse( buf );
+	if( strcmp( token, "{" ) ) return;
+
+	while( 1 )
+	{
+		token = COM_Parse( buf );
+		if( !token[0] || !strcmp( token, "}" ) ) break;
+
+		if( !strcmp( token, "Checkpoint" ) )
+		{
+			if( overview && overview->numCheckpoints < MAX_MISSION_CHECKPOINTS )
+				MF_ParseCheckpoint( buf, &overview->checkpoints[overview->numCheckpoints++] );
+			else
+				MF_ParseCheckpoint( buf, NULL );
 		}
 	}
 }
@@ -1117,6 +1170,11 @@ void MF_ParseMissionScripts( char *buf,
 		else if( !strcmp(token, "Objectives" ) )
 		{
 			MF_ParseObjectives(&buf, overview);
+			continue;
+		}
+		else if( !strcmp(token, "Checkpoints" ) )
+		{
+			MF_ParseCheckpoints(&buf, overview);
 			continue;
 		}
 		else

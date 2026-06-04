@@ -545,6 +545,31 @@ static void CG_DrawRadarSymbols_AIR_new( int vehicle, float range, int x, int y 
 		drawnTargets++;
 		if( drawnTargets >= cg_radarTargets.integer ) break;
 	}
+
+	// MFQ3 missions: draw the current fly-through gate as a yellow blip, clamped
+	// to the radar edge when out of range so its bearing always reads
+	{
+		vec3_t gate, gdir, gang;
+		if( CG_MissionGate_Get( gate ) )
+		{
+			float gdist;
+			VectorSet( pos1, gate[0], gate[1], 0 );
+			VectorSet( pos2, pos[0], pos[1], 0 );
+			VectorSubtract( pos1, pos2, gdir );
+			gdist = VectorNormalize( gdir );
+			if( gdist > range ) gdist = range;	// clamp to edge
+			gdist /= scale;
+			vectoangles( gdir, gang );
+			gang[1] -= hdg - 90;
+			gang[0] = gang[2] = 0;
+			AngleVectors( gang, gdir, 0, 0 );
+			VectorScale( gdir, gdist, gdir );
+			{
+				vec4_t yellow = { 1.0f, 0.9f, 0.0f, 1.0f };
+				CG_FillRect( x + gdir[0] - 3, y - gdir[1] - 3, 6, 6, yellow );
+			}
+		}
+	}
 }
 
 static void CG_DrawRadarSymbols_GROUND_new( int vehicle, float range, int x, int y ) 

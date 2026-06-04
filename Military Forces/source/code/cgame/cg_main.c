@@ -646,6 +646,9 @@ static void CG_RegisterSounds( void ) {
 	cgs.media.nukeShockWave = refExport.RegisterModel( "models/weaphits/nukeshockwave.md3" );
 	cgs.media.nukeCloudModel = refExport.RegisterModel( "models/weaphits/nukecloud.md3" );
 
+	// MFQ3 missions: waypoint gate marker (registered here at load, not mid-frame)
+	CG_MissionGate_RegisterMedia();
+
 	// MFQ3: New sounds
 	cgs.media.planeDeath[0] = S_RegisterSound( "sound/explosions/explode1.wav", false );	
 	cgs.media.planeDeath[1] = S_RegisterSound( "sound/explosions/explode2.wav", false );	

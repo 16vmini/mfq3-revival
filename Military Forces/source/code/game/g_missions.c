@@ -35,6 +35,13 @@ static int					s_numObjectives	= 0;
 static char	s_completeText[128]	= "";
 static char	s_failText[128]		= "";
 
+// fly-through gates (.mis "Checkpoints"); cleared in sequence as the player
+// passes within each radius. A MOBJ_WAYPOINTS objective counts s_checkpointsHit.
+static mission_checkpoint_t	s_checkpoints[MAX_MISSION_CHECKPOINTS];
+static int					s_numCheckpoints	= 0;
+static int					s_checkpointsHit	= 0;
+static int					s_gateLastSent		= -1;	// last progress broadcast to HUD
+
 // .mis PlayerStart: where the human spawns + what they fly (overrides the random
 // deathmatch spawn so the mission's absolute enemy positions line up with us)
 static bool		s_hasPlayerStart			= false;
@@ -123,6 +130,9 @@ void G_LoadMissionScripts()
 	memset( s_objectiveDone, 0, sizeof(s_objectiveDone) );
 	s_completeText[0]			= 0;
 	s_failText[0]				= 0;
+	s_numCheckpoints			= 0;
+	s_checkpointsHit			= 0;
+	s_gateLastSent				= -1;
 
 	memset( &overview, 0, sizeof(overview) );
 	memset( vehicles, 0, sizeof(vehicles) );
@@ -167,6 +177,12 @@ void G_LoadMissionScripts()
 	// optional custom end-screen messages
 	Q_strncpyz( s_completeText, overview.completeText, sizeof(s_completeText) );
 	Q_strncpyz( s_failText, overview.failText, sizeof(s_failText) );
+
+	// fly-through gates
+	s_numCheckpoints = overview.numCheckpoints;
+	if( s_numCheckpoints > MAX_MISSION_CHECKPOINTS ) s_numCheckpoints = MAX_MISSION_CHECKPOINTS;
+	for( i = 0; i < s_numCheckpoints; i++ )
+		s_checkpoints[i] = overview.checkpoints[i];
 
 	// reset the mission-bot objective list (aircraft enemies are tracked there)
 	MF_MissionResetEnemies();
@@ -398,9 +414,61 @@ static float G_MissionMeasure( const mission_objective_t* obj, GameEntity* p )
 {
 	switch( obj->type )
 	{
-	case MOBJ_ALTITUDE:	return G_MissionPlayerAGL( p );
-	case MOBJ_KILLS:	return (float)( s_missionTargetsTotal - s_missionTargetsRemaining );
-	default:			return 0.0f;
+	case MOBJ_ALTITUDE:		return G_MissionPlayerAGL( p );
+	case MOBJ_KILLS:		return (float)( s_missionTargetsTotal - s_missionTargetsRemaining );
+	case MOBJ_WAYPOINTS:	return (float)s_checkpointsHit;
+	default:				return 0.0f;
+	}
+}
+
+// broadcast the current target gate to clients (origin, radius, progress) so the
+// HUD can draw a marker + radar blip. Sent on change; all-clear sends count only.
+static void G_MissionSendGate( void )
+{
+	if( s_numCheckpoints == 0 )
+		return;
+	if( s_checkpointsHit >= s_numCheckpoints )
+	{
+		SV_GameSendServerCommand( -1, va( "mission_gate 0 0 0 0 %d %d",
+			s_checkpointsHit, s_numCheckpoints ) );
+		return;
+	}
+	{
+		mission_checkpoint_t* cp = &s_checkpoints[s_checkpointsHit];
+		SV_GameSendServerCommand( -1, va( "mission_gate %.0f %.0f %.0f %.0f %d %d",
+			cp->origin[0], cp->origin[1], cp->origin[2], cp->radius,
+			s_checkpointsHit, s_numCheckpoints ) );
+		Com_Printf( S_COLOR_CYAN "SENT gate %d/%d at (%.0f %.0f %.0f) r%.0f\n",
+			s_checkpointsHit, s_numCheckpoints, cp->origin[0], cp->origin[1], cp->origin[2], cp->radius );
+	}
+}
+
+// advance the gate course: if the player is within the next gate's radius, clear
+// it and point the HUD at the following one. Returns true if a gate was cleared.
+static void G_MissionCheckGates( GameEntity* p )
+{
+	vec3_t	d;
+
+	if( s_numCheckpoints == 0 )
+		return;
+
+	if( s_checkpointsHit < s_numCheckpoints )
+	{
+		mission_checkpoint_t* cp = &s_checkpoints[s_checkpointsHit];
+		VectorSubtract( p->client_->ps_.origin, cp->origin, d );
+		if( VectorLength( d ) <= cp->radius )
+		{
+			s_checkpointsHit++;
+			SV_GameSendServerCommand( -1, va( "cp \"Gate %d / %d\n\"",
+				s_checkpointsHit, s_numCheckpoints ) );
+		}
+	}
+
+	// (re)broadcast the target gate whenever progress changes (incl. first frame)
+	if( s_checkpointsHit != s_gateLastSent )
+	{
+		s_gateLastSent = s_checkpointsHit;
+		G_MissionSendGate();
 	}
 }
 
@@ -425,11 +493,14 @@ void MF_MissionObjectiveFrame( void )
 	GameEntity*	p;
 	int			i, done = 0;
 
-	if( s_numObjectives == 0 ) return;
+	if( s_numObjectives == 0 && s_numCheckpoints == 0 ) return;
 	if( s_missionComplete || s_missionFailed ) return;
 
 	p = G_MissionFindPlayer();
 	if( !p || p->health_ <= 0 ) return;	// no live player -> nothing to measure
+
+	// advance the fly-through gate course (also drives the HUD marker)
+	G_MissionCheckGates( p );
 
 	for( i = 0; i < s_numObjectives; i++ )
 	{
