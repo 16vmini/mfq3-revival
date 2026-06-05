@@ -1053,6 +1053,16 @@ static void MF_ParseCheckpoint( char **buf, mission_checkpoint_t* cp )
 			token = COM_ParseExt( buf, false );
 			if( token[0] && cp ) cp->radius = atof( token );
 		}
+		else if( !strcmp( token, "Type" ) )
+		{
+			token = COM_ParseExt( buf, false );
+			if( token[0] && cp )
+			{
+				if( !Q_stricmp( token, "land" ) )		cp->type = CP_LAND;
+				else if( !Q_stricmp( token, "sea" ) )	cp->type = CP_SEA;
+				else									cp->type = CP_AIR;
+			}
+		}
 	}
 }
 

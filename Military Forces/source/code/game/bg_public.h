@@ -1064,9 +1064,15 @@ struct mission_objective_t {
 // .mis "Checkpoints" block: fly-through gates for a waypoint course. The player
 // passes within radius of each in order; a MOBJ_WAYPOINTS objective counts them.
 #define MAX_MISSION_CHECKPOINTS	16
+typedef enum {
+	CP_AIR = 0,		// ring in the sky (planes/helos) - placed at the .mis altitude
+	CP_LAND,		// marker on the ground (tanks/infantry) - snapped to terrain
+	CP_SEA,			// buoy on the water (boats) - snapped to the water surface
+} checkpointType_t;
 struct mission_checkpoint_t {
 	vec3_t			origin;
 	float			radius;		// pass within this distance to clear the gate
+	int				type;		// checkpointType_t - drives marker model + placement
 };
 
 struct mission_overview_t {

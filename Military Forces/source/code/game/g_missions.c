@@ -67,9 +67,45 @@ static float G_DistToSegment( const vec3_t pt, const vec3_t a, const vec3_t b )
 
 // world-space gate markers: real ET_GENERAL entities (proven render path, so the
 // plane occludes them) spawned one per checkpoint, removed as each is cleared.
-// Placeholder model until the custom ring lands - swap the path here.
-#define GATE_MARKER_MODEL	"models/mapobjects/gate/gate.md3"
+// Per-type marker model. air = the flight-gate ring; land/sea reuse it as a
+// placeholder until a flag/buoy lands (swap the paths here, nothing else).
+#define GATE_MODEL_AIR		"models/mapobjects/gate/gate.md3"
+#define GATE_MODEL_LAND		"models/mapobjects/gate/gate.md3"	// TODO: flag model
+#define GATE_MODEL_SEA		"models/mapobjects/gate/gate.md3"	// TODO: buoy model
 static GameEntity*			s_gateEnts[MAX_MISSION_CHECKPOINTS];
+
+static const char* G_CheckpointModel( int type )
+{
+	switch( type )
+	{
+	case CP_LAND:	return GATE_MODEL_LAND;
+	case CP_SEA:	return GATE_MODEL_SEA;
+	default:		return GATE_MODEL_AIR;
+	}
+}
+
+// Land/sea checkpoints sit ON the surface, so the .mis only needs a rough X/Y and
+// any altitude - we trace straight down to the ground (land) or water (sea) and
+// drop the marker (and the detection point) there.
+static void G_SnapCheckpointToSurface( mission_checkpoint_t* cp )
+{
+	trace_t	tr;
+	vec3_t	from, down;
+	int		mask = ( cp->type == CP_SEA ) ? MASK_WATER : MASK_SOLID;
+
+	VectorCopy( cp->origin, from );
+	from[2] += 2000.0f;					// start well above so we always trace down onto it
+	VectorCopy( from, down );
+	down[2] -= 40000.0f;
+	SV_Trace( &tr, from, NULL, NULL, down, ENTITYNUM_NONE, mask, false );
+	if( tr.fraction < 1.0f )
+	{
+		// sit on the surface, lifted a touch so the marker isn't half-buried
+		// (placeholder ring; a flag/buoy model would just sit at the surface)
+		float lift = ( cp->type == CP_SEA ) ? 20.0f : 100.0f;
+		cp->origin[2] = tr.endpos[2] + lift;
+	}
+}
 
 // yaw faces the ring's hole (model +X) along the flight path so you fly through
 // it face-on rather than edge-on.
@@ -279,16 +315,21 @@ void G_LoadMissionScripts()
 	for( i = 0; i < s_numCheckpoints; i++ )
 		s_checkpoints[i] = overview.checkpoints[i];
 
-	// spawn a world-space marker entity at each gate (rendered via the proven
-	// packet-entity path, so it's depth-correct - the plane flies through it)
+	// spawn a world-space marker entity at each checkpoint (rendered via the proven
+	// packet-entity path, so it's depth-correct - you pass straight through it).
+	// air = ring at the .mis altitude; land/sea = marker snapped to the surface.
 	if( s_numCheckpoints > 0 )
 	{
-		int gm = G_ModelIndex( (char*)GATE_MARKER_MODEL );
 		for( i = 0; i < s_numCheckpoints; i++ )
 		{
-			vec3_t dir, ang;
-			// face the ring along the approach: from the previous gate (or the
-			// player start for the first) to this one, yaw only (stays upright)
+			vec3_t	dir, ang;
+			int		gm;
+
+			if( s_checkpoints[i].type != CP_AIR )
+				G_SnapCheckpointToSurface( &s_checkpoints[i] );
+
+			// face the marker along the approach: from the previous checkpoint (or
+			// the player start for the first) to this one, yaw only (stays upright)
 			if( i > 0 )
 				VectorSubtract( s_checkpoints[i].origin, s_checkpoints[i-1].origin, dir );
 			else if( s_hasPlayerStart )
@@ -297,6 +338,8 @@ void G_LoadMissionScripts()
 				VectorSet( dir, 1, 0, 0 );
 			dir[2] = 0;
 			vectoangles( dir, ang );
+
+			gm = G_ModelIndex( (char*)G_CheckpointModel( s_checkpoints[i].type ) );
 			s_gateEnts[i] = G_SpawnGateMarker( s_checkpoints[i].origin, gm, ang[YAW] );
 		}
 	}

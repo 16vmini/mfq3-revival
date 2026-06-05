@@ -1,0 +1,37 @@
+// MFQ3 Training Mission 7 - Tank Run
+// LAND waypoint course: drive a tank (Abrams, vehicle index 48) through ground
+// markers. Checkpoints are Type land, so they snap to the terrain - the .mis
+// only needs rough X/Y and any altitude. Same engine as the air gate course.
+Overview
+{
+	map	mfq3_norway
+	gameset	2
+	gametype	0
+	mission	"Tank Run"
+	goal	Waypoints
+	order	7
+	description	"Drive the tank through every marker."
+	briefing	"Ground school. You're in an M1 Abrams. Drive through each marker in order across the Norway terrain - the on-screen radar blip points at your next one. Mind the hills and don't roll it. Clear all the markers to pass."
+	success	"Course complete - solid driving, tanker!"
+	failure	"You're out of action before finishing. Reset and try the run again."
+}
+Entities
+{
+	PlayerStart
+	{
+		Index	48
+		Origin	-3872.0;4768.0;700.0
+		Angles	0.0;270.0;0.0
+		Speed	0
+	}
+}
+Checkpoints
+{
+	Checkpoint { Origin -3872.0;3600.0;700.0   Radius 250  Type land }
+	Checkpoint { Origin -4400.0;2600.0;700.0   Radius 250  Type land }
+	Checkpoint { Origin -3600.0;1600.0;700.0   Radius 250  Type land }
+}
+Objectives
+{
+	Objective { Type waypoints  Op >=  Value 3  Text "Drive through all markers" }
+}
