@@ -241,6 +241,18 @@ void G_LoadMissionScripts()
 	if( !G_LoadOverviewAndEntities( filename, &overview, vehicles, installations ) )
 		return;
 
+	// mf_mission is archived (sticky), so it stays set after a mission and would
+	// otherwise spawn that mission's entities on EVERY map you load. Only run the
+	// mission if the current map is the one the .mis is for; otherwise disarm it
+	// so a normal game on another map is clean. (Re-armed by the Training menu.)
+	if( overview.mapname[0] && Q_stricmp( overview.mapname, mapname ) != 0 )
+	{
+		Com_Printf( "Mission '%s' is for map '%s', not '%s' - not loading; disarming mf_mission.\n",
+			missionname, overview.mapname, mapname );
+		Cvar_Set( "mf_mission", "none" );
+		return;
+	}
+
 	// store the .mis PlayerStart (used by MF_ClientSpawn to place the human)
 	if( overview.hasPlayerStart )
 	{

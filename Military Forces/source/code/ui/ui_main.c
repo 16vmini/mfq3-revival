@@ -3217,7 +3217,7 @@ static void UI_StartSinglePlayer() {
 
  	Cvar_SetValue( "singleplayer", 1 );
  	Cvar_SetValue( "g_gametype", Com_Clamp( 0, 7, tierList[i].gameTypes[j] ) );
-	Cbuf_ExecuteText( EXEC_APPEND, va( "wait ; wait ; map %s\n", tierList[i].maps[j] ) );
+	Cbuf_ExecuteText( EXEC_APPEND, va( "set mf_mission none ; wait ; wait ; map %s\n", tierList[i].maps[j] ) );
 	skill = Cvar_VariableValue( "g_spSkill" );
 
 	if (j == MAPS_PER_TIER-1) {
@@ -3631,7 +3631,7 @@ static void UI_StartSkirmish(bool next)
 
 	g = uiInfo.gameTypes[ui_gameType.integer].gtEnum;
 	Cvar_SetValue( "g_gametype", g );
-	Cbuf_ExecuteText( EXEC_APPEND, va( "wait ; wait ; map %s\n", uiInfo.mapList[ui_currentMap.integer].mapLoadName) );
+	Cbuf_ExecuteText( EXEC_APPEND, va( "set mf_mission none ; wait ; wait ; map %s\n", uiInfo.mapList[ui_currentMap.integer].mapLoadName) );
 	skill = Cvar_VariableValue( "g_spSkill" );
 	Cvar_Set("ui_scoreMap", uiInfo.mapList[ui_currentMap.integer].mapName);
 
@@ -4157,7 +4157,7 @@ void UI_RunMenuScript(char **args)
 			Cvar_SetValue( "g_gametype", Com_Clamp( 0, 8, uiInfo.gameTypes[ui_netGameType.integer].gtEnum ) );
 			Cvar_Set("g_redTeam", UI_Cvar_VariableString("ui_teamName"));
 			Cvar_Set("g_blueTeam", UI_Cvar_VariableString("ui_opponentName"));
-			Cbuf_ExecuteText( EXEC_APPEND, va( "wait ; wait ; map %s\n", uiInfo.mapList[ui_currentNetMap.integer].mapLoadName ) );
+			Cbuf_ExecuteText( EXEC_APPEND, va( "set mf_mission none ; wait ; wait ; map %s\n", uiInfo.mapList[ui_currentNetMap.integer].mapLoadName ) );
 			skill = Cvar_VariableValue( "g_spSkill" );
 			// set max clients based on spots
 			oldclients = Cvar_VariableValue( "sv_maxClients" );
