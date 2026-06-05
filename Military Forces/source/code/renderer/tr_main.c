@@ -1294,8 +1294,12 @@ void R_AddEntitySurfaces (void) {
 		return;
 	}
 
-	for ( tr.currentEntityNum = 1; 
-	      tr.currentEntityNum < tr.refdef.num_entities; 
+	// NOTE: 1-based scheme - entity N lives at entities[N-1] (see R_DecomposeSort,
+	// which decodes to entities[entityNum-1]). The bound must be <= num_entities or
+	// the LAST submitted entity is silently dropped every frame (long-standing bug;
+	// surfaced by mission gate markers, which were consistently the last entity).
+	for ( tr.currentEntityNum = 1;
+	      tr.currentEntityNum <= tr.refdef.num_entities;
 		  tr.currentEntityNum++ ) {
 		ent = tr.currentEntity = &tr.refdef.entities[tr.currentEntityNum-1];
 

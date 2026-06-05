@@ -41,14 +41,41 @@ static mission_checkpoint_t	s_checkpoints[MAX_MISSION_CHECKPOINTS];
 static int					s_numCheckpoints	= 0;
 static int					s_checkpointsHit	= 0;
 static int					s_gateLastSent		= -1;	// last progress broadcast to HUD
+static vec3_t				s_gateLastOrg;				// player pos last frame (swept test)
+static bool					s_gateHaveLast		= false;
+
+// shortest distance from point pt to the segment a..b (swept gate test, so a
+// fast jet can't tunnel past a gate between frames)
+static float G_DistToSegment( const vec3_t pt, const vec3_t a, const vec3_t b )
+{
+	vec3_t	ab, ap, closest;
+	float	t, len2;
+	VectorSubtract( b, a, ab );
+	VectorSubtract( pt, a, ap );
+	len2 = DotProduct( ab, ab );
+	if( len2 < 0.0001f )
+	{
+		VectorSubtract( pt, a, closest );
+		return VectorLength( closest );
+	}
+	t = DotProduct( ap, ab ) / len2;
+	if( t < 0.0f ) t = 0.0f; else if( t > 1.0f ) t = 1.0f;
+	VectorMA( a, t, ab, closest );
+	VectorSubtract( pt, closest, closest );
+	return VectorLength( closest );
+}
 
 // world-space gate markers: real ET_GENERAL entities (proven render path, so the
 // plane occludes them) spawned one per checkpoint, removed as each is cleared.
 // Placeholder model until the custom ring lands - swap the path here.
-#define GATE_MARKER_MODEL	"models/mapobjects/f-14/f-14.md3"
+#define GATE_MARKER_MODEL	"models/mapobjects/gate/gate.md3"
+#define GATE_PASS_SOUND		"sound/misc/menu2.wav"
 static GameEntity*			s_gateEnts[MAX_MISSION_CHECKPOINTS];
+static int					s_gatePassSound	= 0;
 
-static GameEntity* G_SpawnGateMarker( vec3_t origin, int modelindex )
+// yaw faces the ring's hole (model +X) along the flight path so you fly through
+// it face-on rather than edge-on.
+static GameEntity* G_SpawnGateMarker( vec3_t origin, int modelindex, float yaw )
 {
 	GameEntity* ent = theLevel.spawnEntity();
 	ent->classname_		= "mission_gate";
@@ -57,9 +84,14 @@ static GameEntity* G_SpawnGateMarker( vec3_t origin, int modelindex )
 	ent->s.modelindex	= modelindex;
 	VectorCopy( origin, ent->s.origin );
 	G_SetOrigin( ent, origin );			// sets s.pos.trBase + r.currentOrigin
+	VectorSet( ent->s.angles, 0, yaw, 0 );
+	VectorCopy( ent->s.angles, ent->s.apos.trBase );
 	ent->s.pos.trType	= TR_STATIONARY;
 	ent->s.apos.trType	= TR_STATIONARY;
-	ent->r.svFlags		= SVF_USE_CURRENT_ORIGIN;
+	// SVF_BROADCAST: always send to clients regardless of PVS - a gate in a leaf
+	// the player can't "see" gets culled from snapshots otherwise (that's why the
+	// far gate never appeared). Gates are few and always relevant, so broadcast.
+	ent->r.svFlags		= SVF_USE_CURRENT_ORIGIN | SVF_BROADCAST;
 	ent->r.contents		= 0;			// non-solid: fly straight through it
 	ent->takedamage_	= false;		// inert prop - G_Damage skips it (its die/
 	ent->health_		= 0;			// pain calls are NULL-unsafe, so never arm them)
@@ -69,13 +101,28 @@ static GameEntity* G_SpawnGateMarker( vec3_t origin, int modelindex )
 	return ent;
 }
 
+// Hide a cleared gate instead of removing it: theLevel.removeEntity() erases the
+// entity from the vector and shifts every later entity's index (corrupting the
+// world), so we just unlink + blank it. It lingers harmlessly (max a few) until
+// the mission's full map reload clears everything.
 static void G_FreeGateMarker( int i )
 {
 	if( i >= 0 && i < MAX_MISSION_CHECKPOINTS && s_gateEnts[i] )
 	{
-		theLevel.removeEntity( s_gateEnts[i] );
+		SV_UnlinkEntity( s_gateEnts[i] );		// drop from snapshots -> client stops drawing it
+		s_gateEnts[i]->s.eType		= ET_INVISIBLE;
+		s_gateEnts[i]->s.modelindex	= 0;
 		s_gateEnts[i] = NULL;
 	}
+}
+
+// unlink/blank every remaining gate - call before the mission-end intermission
+// and the map reload so no live gate entities ride into the restart.
+static void G_FreeAllGates( void )
+{
+	int i;
+	for( i = 0; i < MAX_MISSION_CHECKPOINTS; i++ )
+		G_FreeGateMarker( i );
 }
 
 // .mis PlayerStart: where the human spawns + what they fly (overrides the random
@@ -169,6 +216,7 @@ void G_LoadMissionScripts()
 	s_numCheckpoints			= 0;
 	s_checkpointsHit			= 0;
 	s_gateLastSent				= -1;
+	s_gateHaveLast				= false;
 	memset( s_gateEnts, 0, sizeof(s_gateEnts) );
 
 	memset( &overview, 0, sizeof(overview) );
@@ -226,8 +274,22 @@ void G_LoadMissionScripts()
 	if( s_numCheckpoints > 0 )
 	{
 		int gm = G_ModelIndex( (char*)GATE_MARKER_MODEL );
+		s_gatePassSound = G_SoundIndex( (char*)GATE_PASS_SOUND );
 		for( i = 0; i < s_numCheckpoints; i++ )
-			s_gateEnts[i] = G_SpawnGateMarker( s_checkpoints[i].origin, gm );
+		{
+			vec3_t dir, ang;
+			// face the ring along the approach: from the previous gate (or the
+			// player start for the first) to this one, yaw only (stays upright)
+			if( i > 0 )
+				VectorSubtract( s_checkpoints[i].origin, s_checkpoints[i-1].origin, dir );
+			else if( s_hasPlayerStart )
+				VectorSubtract( s_checkpoints[i].origin, s_playerStartOrigin, dir );
+			else
+				VectorSet( dir, 1, 0, 0 );
+			dir[2] = 0;
+			vectoangles( dir, ang );
+			s_gateEnts[i] = G_SpawnGateMarker( s_checkpoints[i].origin, gm, ang[YAW] );
+		}
 	}
 
 	// reset the mission-bot objective list (aircraft enemies are tracked there)
@@ -352,6 +414,7 @@ static void G_MissionRecordComplete( void )
 static void G_MissionSendComplete( int primaryDone, int primaryTotal )
 {
 	s_missionComplete = true;
+	G_FreeAllGates();			// clear gate entities before intermission/reload
 	G_MissionRecordComplete();
 	G_MissionSendText( s_completeText );
 	// mission_end <success> <primaryDone> <primaryTotal> <bonusDone> <bonusTotal>
@@ -396,6 +459,7 @@ void G_MissionFailed( void )
 		return;
 
 	s_missionFailed = true;
+	G_FreeAllGates();			// clear gate entities before intermission/reload
 	if( s_numObjectives > 0 )
 	{
 		int done = 0, k;
@@ -484,8 +548,6 @@ static void G_MissionSendGate( void )
 		SV_GameSendServerCommand( -1, va( "mission_gate %.0f %.0f %.0f %.0f %d %d",
 			cp->origin[0], cp->origin[1], cp->origin[2], cp->radius,
 			s_checkpointsHit, s_numCheckpoints ) );
-		Com_Printf( S_COLOR_CYAN "SENT gate %d/%d at (%.0f %.0f %.0f) r%.0f\n",
-			s_checkpointsHit, s_numCheckpoints, cp->origin[0], cp->origin[1], cp->origin[2], cp->radius );
 	}
 }
 
@@ -493,17 +555,26 @@ static void G_MissionSendGate( void )
 // it and point the HUD at the following one. Returns true if a gate was cleared.
 static void G_MissionCheckGates( GameEntity* p )
 {
-	vec3_t	d;
-
 	if( s_numCheckpoints == 0 )
 		return;
 
 	if( s_checkpointsHit < s_numCheckpoints )
 	{
 		mission_checkpoint_t* cp = &s_checkpoints[s_checkpointsHit];
-		VectorSubtract( p->client_->ps_.origin, cp->origin, d );
-		if( VectorLength( d ) <= cp->radius )
+		float dist;
+		// swept: distance from the gate to the path flown since last frame
+		if( s_gateHaveLast )
+			dist = G_DistToSegment( cp->origin, s_gateLastOrg, p->client_->ps_.origin );
+		else
+			dist = G_DistToSegment( cp->origin, p->client_->ps_.origin, p->client_->ps_.origin );
+		if( dist <= cp->radius )
 		{
+			// "ding" as you pass through (global = no falloff; broadcast so the
+			// event reaches the client even if the temp entity falls outside PVS)
+			GameEntity* te = G_TempEntity( cp->origin, EV_GLOBAL_SOUND );
+			te->s.eventParm = s_gatePassSound;
+			te->r.svFlags |= SVF_BROADCAST;
+
 			G_FreeGateMarker( s_checkpointsHit );	// remove the gate we just cleared
 			s_checkpointsHit++;
 			SV_GameSendServerCommand( -1, va( "cp \"Gate %d / %d\n\"",
@@ -517,6 +588,10 @@ static void G_MissionCheckGates( GameEntity* p )
 		s_gateLastSent = s_checkpointsHit;
 		G_MissionSendGate();
 	}
+
+	// remember this frame's position for next frame's swept test
+	VectorCopy( p->client_->ps_.origin, s_gateLastOrg );
+	s_gateHaveLast = true;
 }
 
 static bool G_MissionCompare( float v, int op, float threshold )

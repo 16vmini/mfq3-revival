@@ -2219,9 +2219,6 @@ static void CG_Draw2D_MFQ3( void ) {
 //			CG_DrawCrosshair();
 			CG_DrawCrosshairNames();
 //			CG_DrawReward();
-
-			// MFQ3 missions: waypoint gate target box on the HUD
-			CG_DrawMissionGate2D();
 		}
     
 	}

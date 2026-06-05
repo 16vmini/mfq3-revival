@@ -27,11 +27,12 @@ Entities
 }
 Checkpoints
 {
-	Checkpoint { Origin -3872.0;1500.0;2000.0   Radius 400 }
-	Checkpoint { Origin -3872.0;-1500.0;2000.0  Radius 400 }
-	Checkpoint { Origin -3872.0;-4000.0;2000.0  Radius 400 }
+	Checkpoint { Origin -3872.0;3200.0;2000.0   Radius 160 }
+	Checkpoint { Origin -4600.0;1400.0;2000.0   Radius 160 }
+	Checkpoint { Origin -3200.0;-300.0;2000.0   Radius 160 }
+	Checkpoint { Origin -4300.0;-2000.0;2000.0  Radius 160 }
 }
 Objectives
 {
-	Objective { Type waypoints  Op >=  Value 3  Text "Fly through all gates" }
+	Objective { Type waypoints  Op >=  Value 4  Text "Fly through all gates" }
 }
