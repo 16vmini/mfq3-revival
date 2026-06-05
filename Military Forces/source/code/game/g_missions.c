@@ -42,6 +42,42 @@ static int					s_numCheckpoints	= 0;
 static int					s_checkpointsHit	= 0;
 static int					s_gateLastSent		= -1;	// last progress broadcast to HUD
 
+// world-space gate markers: real ET_GENERAL entities (proven render path, so the
+// plane occludes them) spawned one per checkpoint, removed as each is cleared.
+// Placeholder model until the custom ring lands - swap the path here.
+#define GATE_MARKER_MODEL	"models/mapobjects/f-14/f-14.md3"
+static GameEntity*			s_gateEnts[MAX_MISSION_CHECKPOINTS];
+
+static GameEntity* G_SpawnGateMarker( vec3_t origin, int modelindex )
+{
+	GameEntity* ent = theLevel.spawnEntity();
+	ent->classname_		= "mission_gate";
+	ent->client_		= NULL;
+	ent->s.eType		= ET_GENERAL;
+	ent->s.modelindex	= modelindex;
+	VectorCopy( origin, ent->s.origin );
+	G_SetOrigin( ent, origin );			// sets s.pos.trBase + r.currentOrigin
+	ent->s.pos.trType	= TR_STATIONARY;
+	ent->s.apos.trType	= TR_STATIONARY;
+	ent->r.svFlags		= SVF_USE_CURRENT_ORIGIN;
+	ent->r.contents		= 0;			// non-solid: fly straight through it
+	ent->takedamage_	= false;		// inert prop - G_Damage skips it (its die/
+	ent->health_		= 0;			// pain calls are NULL-unsafe, so never arm them)
+	VectorSet( ent->r.mins, -128, -128, -128 );	// link bounds (PVS), not collision
+	VectorSet( ent->r.maxs,  128,  128,  128 );
+	SV_LinkEntity( ent );
+	return ent;
+}
+
+static void G_FreeGateMarker( int i )
+{
+	if( i >= 0 && i < MAX_MISSION_CHECKPOINTS && s_gateEnts[i] )
+	{
+		theLevel.removeEntity( s_gateEnts[i] );
+		s_gateEnts[i] = NULL;
+	}
+}
+
 // .mis PlayerStart: where the human spawns + what they fly (overrides the random
 // deathmatch spawn so the mission's absolute enemy positions line up with us)
 static bool		s_hasPlayerStart			= false;
@@ -133,6 +169,7 @@ void G_LoadMissionScripts()
 	s_numCheckpoints			= 0;
 	s_checkpointsHit			= 0;
 	s_gateLastSent				= -1;
+	memset( s_gateEnts, 0, sizeof(s_gateEnts) );
 
 	memset( &overview, 0, sizeof(overview) );
 	memset( vehicles, 0, sizeof(vehicles) );
@@ -183,6 +220,15 @@ void G_LoadMissionScripts()
 	if( s_numCheckpoints > MAX_MISSION_CHECKPOINTS ) s_numCheckpoints = MAX_MISSION_CHECKPOINTS;
 	for( i = 0; i < s_numCheckpoints; i++ )
 		s_checkpoints[i] = overview.checkpoints[i];
+
+	// spawn a world-space marker entity at each gate (rendered via the proven
+	// packet-entity path, so it's depth-correct - the plane flies through it)
+	if( s_numCheckpoints > 0 )
+	{
+		int gm = G_ModelIndex( (char*)GATE_MARKER_MODEL );
+		for( i = 0; i < s_numCheckpoints; i++ )
+			s_gateEnts[i] = G_SpawnGateMarker( s_checkpoints[i].origin, gm );
+	}
 
 	// reset the mission-bot objective list (aircraft enemies are tracked there)
 	MF_MissionResetEnemies();
@@ -458,6 +504,7 @@ static void G_MissionCheckGates( GameEntity* p )
 		VectorSubtract( p->client_->ps_.origin, cp->origin, d );
 		if( VectorLength( d ) <= cp->radius )
 		{
+			G_FreeGateMarker( s_checkpointsHit );	// remove the gate we just cleared
 			s_checkpointsHit++;
 			SV_GameSendServerCommand( -1, va( "cp \"Gate %d / %d\n\"",
 				s_checkpointsHit, s_numCheckpoints ) );
