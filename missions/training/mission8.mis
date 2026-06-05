@@ -1,0 +1,48 @@
+// MFQ3 Training Mission 8 - Sea Run
+// SEA waypoint course: sail the patrol boat (vehicle index 57) through a string
+// of buoys on mfq3_subpen's open water. Checkpoints are Type sea, so they snap
+// down to the waterline (MASK_WATER) - the .mis only needs rough X/Y. Same engine
+// as the air gate (mission 6) and land marker (mission 7) courses, with a buoy
+// marker instead of a ring/flag.
+//
+// CLOSE TEST course, due EAST. Screenshots showed the spawn pocket is bounded by
+// shore to the NE (the old NE staircase beached its last buoys), but the boat
+// freely sailed the corridor due east at Y~1660 from X~5848 out to X~6582 - all
+// open water. So the buoys now step east along that verified-water line, ~200u
+// apart starting ~250u ahead, and the spawn faces east (yaw 0) straight down it.
+// Buoys auto-snap to the waterline. (Buoy sits a touch high + no boat-HUD radar
+// blip yet - follow-ups once pass/ding/complete is confirmed.)
+Overview
+{
+	map	mfq3_subpen
+	gameset	2
+	gametype	0
+	mission	"Sea Run"
+	goal	Waypoints
+	order	8
+	description	"Sail the patrol boat through every buoy."
+	briefing	"Welcome to the water. You're at the helm of a patrol boat. A line of buoys marks a course around the harbour - the on-screen radar blip points at your next one. Throttle up, sail through each buoy in order, and mind the turning circle - boats don't stop on a dime. Clear all the buoys to pass."
+	success	"Course complete - fine seamanship, skipper!"
+	failure	"You're dead in the water before finishing. Come about and run it again."
+}
+Entities
+{
+	PlayerStart
+	{
+		Index	57
+		Origin	5704.0;1696.0;64.0
+		Angles	0.0;0.0;0.0
+		Speed	0
+	}
+}
+Checkpoints
+{
+	Checkpoint { Origin 5950.0;1680.0;64.0      Radius 200  Type sea }
+	Checkpoint { Origin 6150.0;1675.0;64.0      Radius 200  Type sea }
+	Checkpoint { Origin 6350.0;1670.0;64.0      Radius 200  Type sea }
+	Checkpoint { Origin 6550.0;1660.0;64.0      Radius 200  Type sea }
+}
+Objectives
+{
+	Objective { Type waypoints  Op >=  Value 4  Text "Sail through all buoys" }
+}
