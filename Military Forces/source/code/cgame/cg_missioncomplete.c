@@ -24,6 +24,7 @@ static float		s_gateRadius	= 300.0f;
 static int			s_gateHit		= 0;
 static int			s_gateTotal		= 0;
 static qhandle_t	s_gateModel		= 0;
+static sfxHandle_t	s_gatePassSnd	= 0;
 
 void CG_MissionEnd_Clear( void )
 {
@@ -115,7 +116,16 @@ void CG_DrawMissionGate2D( void )
 // a handle but doesn't actually load the model, so it drew nothing.
 void CG_MissionGate_RegisterMedia( void )
 {
-	s_gateModel = refExport.RegisterModel( "models/mapobjects/GR_trees/tree1.md3" );
+	s_gateModel   = refExport.RegisterModel( "models/mapobjects/gate/gate.md3" );
+	s_gatePassSnd = S_RegisterSound( "sound/misc/gate_pass.wav", false );
+}
+
+// played directly on a "gateding" server command - bypasses the entity event
+// system, which dropped the very first gate's ding after spawn.
+void CG_MissionGate_Ding( void )
+{
+	if( s_gatePassSnd )
+		S_StartLocalSound( s_gatePassSnd, CHAN_LOCAL_SOUND );
 }
 
 // expose the current target gate position (for the radar blip). Returns false if

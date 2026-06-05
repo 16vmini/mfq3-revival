@@ -69,9 +69,7 @@ static float G_DistToSegment( const vec3_t pt, const vec3_t a, const vec3_t b )
 // plane occludes them) spawned one per checkpoint, removed as each is cleared.
 // Placeholder model until the custom ring lands - swap the path here.
 #define GATE_MARKER_MODEL	"models/mapobjects/gate/gate.md3"
-#define GATE_PASS_SOUND		"sound/misc/menu2.wav"
 static GameEntity*			s_gateEnts[MAX_MISSION_CHECKPOINTS];
-static int					s_gatePassSound	= 0;
 
 // yaw faces the ring's hole (model +X) along the flight path so you fly through
 // it face-on rather than edge-on.
@@ -274,7 +272,6 @@ void G_LoadMissionScripts()
 	if( s_numCheckpoints > 0 )
 	{
 		int gm = G_ModelIndex( (char*)GATE_MARKER_MODEL );
-		s_gatePassSound = G_SoundIndex( (char*)GATE_PASS_SOUND );
 		for( i = 0; i < s_numCheckpoints; i++ )
 		{
 			vec3_t dir, ang;
@@ -569,11 +566,9 @@ static void G_MissionCheckGates( GameEntity* p )
 			dist = G_DistToSegment( cp->origin, p->client_->ps_.origin, p->client_->ps_.origin );
 		if( dist <= cp->radius )
 		{
-			// "ding" as you pass through (global = no falloff; broadcast so the
-			// event reaches the client even if the temp entity falls outside PVS)
-			GameEntity* te = G_TempEntity( cp->origin, EV_GLOBAL_SOUND );
-			te->s.eventParm = s_gatePassSound;
-			te->r.svFlags |= SVF_BROADCAST;
+			// "ding" as you pass through - a direct command + local sound on the
+			// client (the entity-event path dropped the very first gate's ding)
+			SV_GameSendServerCommand( -1, "gateding" );
 
 			G_FreeGateMarker( s_checkpointsHit );	// remove the gate we just cleared
 			s_checkpointsHit++;

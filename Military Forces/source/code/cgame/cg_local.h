@@ -1326,6 +1326,7 @@ void CG_MissionGate_Set( float x, float y, float z, float radius, int hit, int t
 void CG_AddMissionGate( void );
 bool CG_MissionGate_Get( vec3_t out );
 void CG_MissionGate_RegisterMedia( void );
+void CG_MissionGate_Ding( void );
 void CG_DrawMissionGate2D( void );
 bool CG_DrawMissionEndBanner( void );
 void CG_DrawActive( stereoFrame_t stereoView );
