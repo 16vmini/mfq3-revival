@@ -201,8 +201,10 @@ void ClientImpacts( GameEntity *ent, pmove_t *pm )
 			continue;	// duplicated
 
 		GameEntity* other = theLevel.getEntity(pm->touchents[i]);
+		if( !other )
+			continue;	// out-of-range touchent (world/none) - cannot interact
 
-		if( (( ent->r.svFlags & SVF_BOT || (ent->client_->vehicle_ >= 0) ) && ( ent->touchFunc_ )) ) 
+		if( (( ent->r.svFlags & SVF_BOT || (ent->client_->vehicle_ >= 0) ) && ( ent->touchFunc_ )) )
 			ent->touchFunc_->execute( other, &trace );
 
 		if( !other->touchFunc_ ) 

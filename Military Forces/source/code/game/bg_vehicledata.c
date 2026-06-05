@@ -3229,8 +3229,8 @@ completeVehicleData_t availableVehicles[] =
 	150,						// max fuel
 	8,							// max angle to lean when turning <- gearheight
 	-5,							// bowangle (depends on speeed) <-tailangle 
-	0, WI_MGT_2X30MM, WI_MGT_12_7MM, WI_HELLFIRE, WI_STINGER, 0, 0, WI_CFLARE,// weapons
-	0, 500, 300, 2, 2, 0, 0, 20,	// ammo
+	WI_MGT_12_7MM, WI_MGT_2X30MM, 0, WI_HELLFIRE, WI_STINGER, 0, 0, WI_CFLARE,// weapons  (slot 0 = WP_MACHINEGUN: primary-trigger gun)
+	1000, 500, 0, 2, 2, 0, 0, 20,	// ammo
 	1,2,0,0,0,0,0,0,			// turret
 	{0, 0, 6},					// cameraposition for cockpit view
 	0,							// effect model

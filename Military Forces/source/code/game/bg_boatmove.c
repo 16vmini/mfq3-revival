@@ -280,9 +280,12 @@ PM_AddTouchEnt_Boat
 static void PM_AddTouchEnt_Boat( int entityNum ) {
 	int		i;
 
-	if ( entityNum == ENTITYNUM_WORLD ) {
-		if( pm->ps->pm_type != PM_VEHICLE )
-		    return;
+	// the engine's entity vector is compact (world is at index 0, not 1022),
+	// so world/none sentinels are not valid indices - never add them to
+	// touchents or ClientImpacts->getEntity() will throw out_of_range.
+	// (the normal PM_AddTouchEnt drops ENTITYNUM_WORLD the same way.)
+	if ( entityNum == ENTITYNUM_WORLD || entityNum == ENTITYNUM_NONE ) {
+		return;
 	}
 	if ( pm->numtouch == MAXTOUCH ) {
 		return;

@@ -169,6 +169,11 @@ LevelLocals::removeEntity(GameEntity* entToRemove)
 GameEntity*
 LevelLocals::getEntity(int entNum)
 {
+	// defensive: out-of-range (e.g. ENTITYNUM_WORLD/NONE sentinels) would make
+	// vector::at() throw std::out_of_range, which is unhandled and aborts the
+	// process. Return null instead so callers can skip gracefully.
+	if( entNum < 0 || entNum >= (int)gameEntities_.size() )
+		return nullptr;
 	return reinterpret_cast<GameEntity*>(gameEntities_.at(entNum));
 }
 
