@@ -854,7 +854,7 @@ void MF_TrainingFrame( void )
 */
 
 #define DRONE_STRIPS		6		/* number of zig-zag strips across the map */
-#define DRONE_ALTITUDE		1800.0f /* fixed cruise height above sea level */
+#define DRONE_CLEARANCE		400.0f	/* cruise height ABOVE the highest spawn (keeps it under the skybox) */
 #define DRONE_STRIP_NAME_PREFIX "drone_swp_"
 
 /*
@@ -871,8 +871,8 @@ int Bot_SpawnSurveillanceDrone( void )
 {
 	GameEntity	*spot;
 	vec3_t		mins, maxs, origin, angles;
-	float		xMin, xMax, yMin, yMax;
-	float		xStep, y;
+	float		xMin, xMax, yMin, yMax, zMax;
+	float		xStep, y, droneAlt;
 	int			i, strip, slot, planeIdx, firstWp, numWp;
 	char		wpName[32];
 	bool		first = true;
@@ -880,6 +880,7 @@ int Bot_SpawnSurveillanceDrone( void )
 	/* --- derive map bounds from spawn points --- */
 	xMin = yMin =  99999.0f;
 	xMax = yMax = -99999.0f;
+	zMax = -99999.0f;
 
 	spot = NULL;
 	while( (spot = G_Find( spot, FOFS(classname_), "info_player_deathmatch" )) != NULL )
@@ -888,14 +889,21 @@ int Bot_SpawnSurveillanceDrone( void )
 		if( spot->r.currentOrigin[0] > xMax ) xMax = spot->r.currentOrigin[0];
 		if( spot->r.currentOrigin[1] < yMin ) yMin = spot->r.currentOrigin[1];
 		if( spot->r.currentOrigin[1] > yMax ) yMax = spot->r.currentOrigin[1];
+		if( spot->r.currentOrigin[2] > zMax ) zMax = spot->r.currentOrigin[2];
 		first = false;
 	}
 
 	if( first )
 	{
-		/* No spawn points found: default to a 10000-unit arena */
+		/* No spawn points found: default to a 10000-unit arena at z=600 */
 		xMin = yMin = -5000; xMax = yMax = 5000;
+		zMax = 600.0f;
 	}
+
+	/* cruise just above the spawn level so the drone stays inside the skybox
+	   (1800 put it above the sky ceiling -> invisible from the ground). The
+	   bot's own terrain-avoidance climbs it over any peaks. */
+	droneAlt = zMax + DRONE_CLEARANCE;
 
 	/* Expand bounds a bit so the drone sweeps past the edge */
 	xMin -= 512; xMax += 512;
@@ -914,12 +922,12 @@ int Bot_SpawnSurveillanceDrone( void )
 		float y1 = (strip % 2 == 0) ? yMax : yMin;
 
 		Com_sprintf( wpName, sizeof(wpName), DRONE_STRIP_NAME_PREFIX "%d_a", strip );
-		VectorSet( origin, x, y0, DRONE_ALTITUDE );
+		VectorSet( origin, x, y0, droneAlt );
 		Bot_AddWaypoint( wpName, origin );
 		numWp++;
 
 		Com_sprintf( wpName, sizeof(wpName), DRONE_STRIP_NAME_PREFIX "%d_b", strip );
-		VectorSet( origin, x, y1, DRONE_ALTITUDE );
+		VectorSet( origin, x, y1, droneAlt );
 		Bot_AddWaypoint( wpName, origin );
 		numWp++;
 	}
@@ -952,12 +960,12 @@ int Bot_SpawnSurveillanceDrone( void )
 
 	/* Configure surveillance mode: never attack, fixed altitude, waypoint loop */
 	botGlobals.bots[slot].surveillanceMode = qtrue;
-	botGlobals.bots[slot].cruiseAltitude   = DRONE_ALTITUDE;
+	botGlobals.bots[slot].cruiseAltitude   = droneAlt;
 	botGlobals.bots[slot].currentWaypoint  = firstWp;
 	botGlobals.bots[slot].patrolStartWaypoint = firstWp;
 
 	Com_Printf( S_COLOR_GREEN "Surveillance drone spawned (slot %d, ent %d, %d waypoints, %.0f alt)\n",
-		slot, botGlobals.bots[slot].entityNum, numWp, DRONE_ALTITUDE );
+		slot, botGlobals.bots[slot].entityNum, numWp, droneAlt );
 
 	return slot;
 }
