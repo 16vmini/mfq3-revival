@@ -25,7 +25,7 @@
 #define DRONECAM_W		150.0f
 #define DRONECAM_H		150.0f
 #define DRONECAM_ALT	1800.0f		// how high above the anchor the camera sits
-#define DRONECAM_FOV	55.0f
+#define DRONECAM_FOV	18.0f		// narrow FOV = telephoto zoom (like a real drone)
 #define DRONECAM_MAXLIST	16
 
 static bool	s_droneCamOn   = false;

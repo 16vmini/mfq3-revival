@@ -124,8 +124,9 @@ void Bot_UpdateState( botState_t *bs )
 		if( bs->currentWaypoint >= 0 ) {
 			Bot_SetState( bs, BOT_STATE_PATROL );
 		}
-		/* Otherwise, scan for targets */
-		else if( theLevel.time_ - bs->lastScanTime > bs->scanInterval ) {
+		/* Surveillance drones never leave patrol/idle to chase */
+		else if( !bs->surveillanceMode &&
+				 theLevel.time_ - bs->lastScanTime > bs->scanInterval ) {
 			bs->lastScanTime = theLevel.time_;
 			if( Bot_AcquireTarget( bs ) >= 0 ) {
 				Bot_SetState( bs, BOT_STATE_CHASE );
@@ -134,8 +135,9 @@ void Bot_UpdateState( botState_t *bs )
 		break;
 
 	case BOT_STATE_PATROL:
-		/* Check for enemies */
-		if( theLevel.time_ - bs->lastScanTime > bs->scanInterval ) {
+		/* Surveillance drones never break off to attack */
+		if( !bs->surveillanceMode &&
+			theLevel.time_ - bs->lastScanTime > bs->scanInterval ) {
 			bs->lastScanTime = theLevel.time_;
 			if( Bot_AcquireTarget( bs ) >= 0 ) {
 				Bot_SetState( bs, BOT_STATE_CHASE );

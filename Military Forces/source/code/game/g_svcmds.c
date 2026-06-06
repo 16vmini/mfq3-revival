@@ -501,6 +501,12 @@ bool ConsoleCommand()
 		return true;
 	}
 
+	if (Q_stricmp (cmd, "bot_drone") == 0)		/* MFQ3: spawn a surveillance drone */
+	{
+		Bot_Drone_f();
+		return true;
+	}
+
 	if (Q_stricmp (cmd, "bot_target") == 0)
 	{
 		Bot_AddTank_f();

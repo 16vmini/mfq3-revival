@@ -189,6 +189,7 @@ typedef struct {
 	qboolean		wantsTakeoff;		/* bot wants to take off */
 	qboolean		wantsLanding;		/* bot wants to land */
 	qboolean		holdStraight;		/* fly straight ahead instead of loitering in a circle (easy training target) */
+	qboolean		surveillanceMode;	/* drone/recon: never leaves PATROL, never fires */
 	float			cruiseAltitude;		/* desired flight altitude */
 
 	/* Ground vehicle specific */
@@ -354,6 +355,10 @@ void	Bot_Infantry_SeekCover( botState_t *bs );
    team: 1 or 2
    vehicle_type: index into availableVehicles[] */
 void	Bot_Add_f( void );
+
+/* Spawn a surveillance drone (lawnmower sweep, no combat): bot_drone */
+int		Bot_SpawnSurveillanceDrone( void );
+void	Bot_Drone_f( void );
 
 /* Remove a bot: bot_remove [entitynum] */
 void	Bot_Remove_f( void );

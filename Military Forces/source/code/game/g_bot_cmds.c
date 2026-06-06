@@ -845,3 +845,127 @@ void MF_TrainingFrame( void )
 		}
 	}
 }
+
+
+/*
+=============================================================================
+  SURVEILLANCE DRONE
+=============================================================================
+*/
+
+#define DRONE_STRIPS		6		/* number of zig-zag strips across the map */
+#define DRONE_ALTITUDE		1800.0f /* fixed cruise height above sea level */
+#define DRONE_STRIP_NAME_PREFIX "drone_swp_"
+
+/*
+  Bot_SpawnSurveillanceDrone
+  Spawns a friendly plane bot in surveillance mode flying a lawnmower
+  zig-zag pattern over the whole map at fixed altitude. It never engages
+  enemies or fires. The drone cam PiP feed can be aimed at it via \dronecam.
+
+  Derives map extents from the existing spawn points (already proven approach).
+  Creates a set of named waypoints DRONE_STRIP_NAME_PREFIX%d forming a looping
+  strip pattern, then spawns the bot on team 1 using the first available plane.
+*/
+int Bot_SpawnSurveillanceDrone( void )
+{
+	GameEntity	*spot;
+	vec3_t		mins, maxs, origin, angles;
+	float		xMin, xMax, yMin, yMax;
+	float		xStep, y;
+	int			i, strip, slot, planeIdx, firstWp, numWp;
+	char		wpName[32];
+	bool		first = true;
+
+	/* --- derive map bounds from spawn points --- */
+	xMin = yMin =  99999.0f;
+	xMax = yMax = -99999.0f;
+
+	spot = NULL;
+	while( (spot = G_Find( spot, FOFS(classname_), "info_player_deathmatch" )) != NULL )
+	{
+		if( spot->r.currentOrigin[0] < xMin ) xMin = spot->r.currentOrigin[0];
+		if( spot->r.currentOrigin[0] > xMax ) xMax = spot->r.currentOrigin[0];
+		if( spot->r.currentOrigin[1] < yMin ) yMin = spot->r.currentOrigin[1];
+		if( spot->r.currentOrigin[1] > yMax ) yMax = spot->r.currentOrigin[1];
+		first = false;
+	}
+
+	if( first )
+	{
+		/* No spawn points found: default to a 10000-unit arena */
+		xMin = yMin = -5000; xMax = yMax = 5000;
+	}
+
+	/* Expand bounds a bit so the drone sweeps past the edge */
+	xMin -= 512; xMax += 512;
+	yMin -= 512; yMax += 512;
+
+	/* --- generate lawnmower strip waypoints --- */
+	xStep = (xMax - xMin) / (float)DRONE_STRIPS;
+	firstWp = botGlobals.waypointList.usedWPs;
+	numWp = 0;
+
+	for( strip = 0; strip <= DRONE_STRIPS; strip++ )
+	{
+		float x = xMin + strip * xStep;
+		/* alternate Y direction for the zig-zag */
+		float y0 = (strip % 2 == 0) ? yMin : yMax;
+		float y1 = (strip % 2 == 0) ? yMax : yMin;
+
+		Com_sprintf( wpName, sizeof(wpName), DRONE_STRIP_NAME_PREFIX "%d_a", strip );
+		VectorSet( origin, x, y0, DRONE_ALTITUDE );
+		Bot_AddWaypoint( wpName, origin );
+		numWp++;
+
+		Com_sprintf( wpName, sizeof(wpName), DRONE_STRIP_NAME_PREFIX "%d_b", strip );
+		VectorSet( origin, x, y1, DRONE_ALTITUDE );
+		Bot_AddWaypoint( wpName, origin );
+		numWp++;
+	}
+
+	/* Link the waypoints into a loop (each points to the next, last wraps) */
+	for( i = firstWp; i < firstWp + numWp; i++ )
+	{
+		int next = (i + 1 < firstWp + numWp) ? (i + 1) : firstWp;
+		botGlobals.waypointList.waypoints[i].nextWaypointIndex = next;
+	}
+
+	/* --- pick a plane vehicle --- */
+	planeIdx = MF_getIndexOfVehicleEx( -1, G_GetGameset(), MF_TEAM_ANY, CAT_PLANE, -1, -1, 0, false );
+	if( planeIdx < 0 )
+	{
+		Com_Printf( S_COLOR_RED "Bot_SpawnSurveillanceDrone: no plane vehicle available\n" );
+		return -1;
+	}
+
+	/* Spawn at first waypoint position */
+	VectorCopy( botGlobals.waypointList.waypoints[firstWp].pos, origin );
+	VectorSet( angles, 0, 0, 0 );
+
+	slot = Bot_Spawn( 1, planeIdx, origin, angles );
+	if( slot < 0 )
+	{
+		Com_Printf( S_COLOR_RED "Bot_SpawnSurveillanceDrone: Bot_Spawn failed\n" );
+		return -1;
+	}
+
+	/* Configure surveillance mode: never attack, fixed altitude, waypoint loop */
+	botGlobals.bots[slot].surveillanceMode = qtrue;
+	botGlobals.bots[slot].cruiseAltitude   = DRONE_ALTITUDE;
+	botGlobals.bots[slot].currentWaypoint  = firstWp;
+	botGlobals.bots[slot].patrolStartWaypoint = firstWp;
+
+	Com_Printf( S_COLOR_GREEN "Surveillance drone spawned (slot %d, ent %d, %d waypoints, %.0f alt)\n",
+		slot, botGlobals.bots[slot].entityNum, numWp, DRONE_ALTITUDE );
+
+	return slot;
+}
+
+/* Console command: bot_drone */
+void Bot_Drone_f( void )
+{
+	int slot = Bot_SpawnSurveillanceDrone();
+	if( slot >= 0 )
+		Com_Printf( "Use \\listdrones / \\dronecam 1 to view the feed.\n" );
+}
