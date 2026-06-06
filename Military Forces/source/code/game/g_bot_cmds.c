@@ -854,8 +854,21 @@ void MF_TrainingFrame( void )
 */
 
 #define DRONE_STRIPS		6		/* number of zig-zag strips across the map */
-#define DRONE_CLEARANCE		400.0f	/* cruise height ABOVE the highest spawn (keeps it under the skybox) */
+#define DRONE_CLEARANCE		600.0f	/* cruise height above the GROUND at map centre (under the skybox) */
 #define DRONE_STRIP_NAME_PREFIX "drone_swp_"
+
+/* ground height at (x,y): trace straight down and return the surface Z */
+static float MF_GroundAt( float x, float y, float fallback )
+{
+	trace_t	tr;
+	vec3_t	hi, lo;
+	VectorSet( hi, x, y, 16384 );
+	VectorSet( lo, x, y, -16384 );
+	SV_Trace( &tr, hi, NULL, NULL, lo, ENTITYNUM_NONE, MASK_SOLID, false );
+	if( tr.fraction < 1.0f && !tr.startsolid )
+		return tr.endpos[2];
+	return fallback;
+}
 
 /*
   Bot_SpawnSurveillanceDrone
@@ -900,14 +913,14 @@ int Bot_SpawnSurveillanceDrone( void )
 		zMax = 600.0f;
 	}
 
-	/* cruise just above the spawn level so the drone stays inside the skybox
-	   (1800 put it above the sky ceiling -> invisible from the ground). The
-	   bot's own terrain-avoidance climbs it over any peaks. */
-	droneAlt = zMax + DRONE_CLEARANCE;
+	/* Cruise altitude is TERRAIN-relative, not spawn-relative: norway has
+	   high air-spawns (~2000) so "highest spawn + clearance" shot the drone
+	   above the skybox. Trace down at the map centre and fly a sensible height
+	   above the actual ground; the bot's terrain-avoidance climbs over peaks. */
+	droneAlt = MF_GroundAt( (xMin + xMax) * 0.5f, (yMin + yMax) * 0.5f, zMax ) + DRONE_CLEARANCE;
 
-	/* Expand bounds a bit so the drone sweeps past the edge */
-	xMin -= 512; xMax += 512;
-	yMin -= 512; yMax += 512;
+	/* keep the sweep within the spawn bounds - corners (expanded) were hitting
+	   terrain / out-of-bounds and the drone "crashed" */
 
 	/* --- generate lawnmower strip waypoints --- */
 	xStep = (xMax - xMin) / (float)DRONE_STRIPS;
@@ -947,8 +960,9 @@ int Bot_SpawnSurveillanceDrone( void )
 		return -1;
 	}
 
-	/* Spawn at first waypoint position */
-	VectorCopy( botGlobals.waypointList.waypoints[firstWp].pos, origin );
+	/* Spawn at the map centre at cruise altitude (safe in-bounds airspace),
+	   then it flies to waypoint 0 and starts the sweep. */
+	VectorSet( origin, (xMin + xMax) * 0.5f, (yMin + yMax) * 0.5f, droneAlt );
 	VectorSet( angles, 0, 0, 0 );
 
 	slot = Bot_Spawn( 1, planeIdx, origin, angles );

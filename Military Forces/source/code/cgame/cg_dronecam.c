@@ -30,6 +30,7 @@
 
 static bool	s_droneCamOn   = false;
 static int	s_droneTarget  = -1;	// entity number to view, -1 = overhead-above-player
+static int	s_droneIndex   = 1;		// 1-based list number (for the label)
 
 void CG_DroneCam_Clear( void )
 {
@@ -117,6 +118,7 @@ void CG_DroneCam_Cmd( void )
 			if( n >= 1 && n <= count )
 			{
 				s_droneTarget = list[n - 1];
+				s_droneIndex  = n;
 				CG_Printf( "Drone cam -> #%d\n", n );
 			}
 			else
