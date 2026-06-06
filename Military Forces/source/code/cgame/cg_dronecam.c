@@ -185,8 +185,13 @@ void CG_DroneCam_Render( void )
 
 	CG_DroneCam_Anchor( cam.vieworg );
 
+	// re-populate the scene for this viewpoint (the main RenderScene consumed it)
+	// - same sequence the MFD camera uses, so entities appear in the feed
 	cg.drawingMFD = true;
-	refExport.RenderScene( &cam );		// reuses the scene built this frame -> entities included
+	CG_AddPacketEntities();
+	CG_AddMarks();
+	CG_AddLocalEntities();
+	refExport.RenderScene( &cam );
 	cg.drawingMFD = false;
 }
 
