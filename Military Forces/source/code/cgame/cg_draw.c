@@ -2223,6 +2223,9 @@ static void CG_Draw2D_MFQ3( void ) {
     
 	}
 
+	// MFQ3 drone cam (PiP feed) - active play only; intermission/scoreboard return above
+	CG_DroneCam_Draw();
+
 	CG_DrawVote();
 	CG_DrawTeamVote();
 

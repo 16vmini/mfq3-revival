@@ -1935,6 +1935,7 @@ void CG_Init( int serverMessageNum, int serverCommandSequence, int clientNum ) {
 	memset( cg_weapons, 0, sizeof(cg_weapons) );
 	memset( cg_items, 0, sizeof(cg_items) );
 	CG_MissionEnd_Clear();		// MFQ3 missions: drop any stale end-banner state
+	CG_DroneCam_Clear();		// MFQ3 drone cam: off by default each map
 
 	cg.clientNum = clientNum;
 	
