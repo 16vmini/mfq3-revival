@@ -501,7 +501,7 @@ bool ConsoleCommand()
 		return true;
 	}
 
-	if (Q_stricmp (cmd, "bot_drone") == 0)		/* MFQ3: spawn a surveillance drone */
+	if (Q_stricmp (cmd, "dronelaunch") == 0 || Q_stricmp (cmd, "bot_drone") == 0)	/* MFQ3: launch a surveillance drone */
 	{
 		Bot_Drone_f();
 		return true;
