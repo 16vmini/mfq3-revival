@@ -64,6 +64,55 @@ completeVehicleData_t availableVehicles[] =
 	{0,0,0,0}					// shadow orientation adjusters
     },
 
+    {	"MQ-9 Reaper",				// descriptiveName
+	"MQ-9",						// tinyName
+	"reaper",					// modelName
+	SHADOW_DEFAULT,				// alpha shadow
+	MF_GAMESET_MODERN,			// id
+	MF_TEAM_2,
+	CAT_PLANE,
+	CLASS_PLANE_FIGHTER,
+	0,							// flags
+	HC_GEAR|HC_SPEEDBRAKE|
+	HC_VAPOR,					// capabilities
+	{0,0,0,0,0,0,0,0,0,0},		// handles - SET AUTOMATICALLY
+	{0, 0, 0},					// mins (bounding box) - SET AUTOMATICALLY
+	{0, 0, 0},					// max (bounding box) - SET AUTOMATICALLY
+	{85, 60, 280},				// turnspeed around the three axis
+	{0, 100, 70},				// camera distance {min,max,default}
+	{0, 100, 20},				// camera height {min,max,default}
+	200,						// stallspeed
+	700,						// maxspeed
+	0,							// min throttle
+	15,							// max throttle
+	1,							// engines
+	0,							// wheels
+	0,							// wheel circumference
+	260,						// acceleration
+	120,						// health
+	{16.65f, -3.391f, 0.378f},	// gun tag
+	60,							// max fuel
+	0,							// gearheight - SET AUTOMATICALLY
+	0,							// tailangle
+	WI_MG_20MM, WI_SIDEWINDER, WI_AMRAAM, 0, 0, 0, 0, WI_FLARE,	// weapons
+	450, 4, 4, 0, 0, 0, 0, 30,		// ammo
+	0,0,0,0,0,0,0,0,			// turret
+	{19, 0, 5},					// cameraposition for cockpit view
+	AB_BALL,					// effect model
+	12000,						// radar range
+	9000,						// radar range ground
+	0,							// trackcone
+	-1,							// trackcone ground
+	0,							// swingangle
+	1400,						// geartime
+	0,							// max gear frame
+	1000,						// baytime
+	0,							// max bay frame
+	0,							// renderflags
+	{4,0,34,24},				// shadow coordinates
+	{0,0,0,0}					// shadow orientation adjusters
+    },
+
     {	"F-16 Falcon (AG - MK82)",	    // descriptiveName
 	"F-16",						// tinyName
 	"f-16",						// modelName
@@ -3231,6 +3280,54 @@ completeVehicleData_t availableVehicles[] =
 	-5,							// bowangle (depends on speeed) <-tailangle 
 	WI_MGT_12_7MM, WI_MGT_2X30MM, 0, WI_HELLFIRE, WI_STINGER, 0, 0, WI_CFLARE,// weapons  (slot 0 = WP_MACHINEGUN: primary-trigger gun)
 	1000, 500, 0, 2, 2, 0, 0, 20,	// ammo
+	1,2,0,0,0,0,0,0,			// turret
+	{0, 0, 6},					// cameraposition for cockpit view
+	0,							// effect model
+	8000,						// radar range
+	7000,						// radar range ground
+	-1,							// trackcone
+	0,							// trackcone ground
+	0,							// swingangle
+	1400,						// geartime
+	0,							// max gear frame
+	1000,						// baytime
+	0,							// max bay frame
+	0,							// renderflags
+	{0,0,0,0},					// shadow coordinates
+	{0,0,0,0}					// shadow orientation adjusters
+    },
+
+    {	"Submarine",			// descriptiveName
+	"SUB",						// tinyName
+	"warsub",					// modelName  (6-part war sub: hull/turret/gun/prop/rudder/planes)
+	SHADOW_DEFAULT,				// alpha shadow
+	MF_GAMESET_MODERN,			// id
+	MF_TEAM_1,
+	CAT_BOAT,					// category: naval (uses the boat HUD/spawn/render path)
+	CLASS_BOAT_SUB,				// class: submarine -> PM_SubMove (dive/surface)
+	0,							// flags
+	HC_DUALGUNS,				// capabilities
+	{0,0,0,0,0,0,0,0,0,0},			// handles - SET AUTOMATICALLY
+	{0, 0, 0},					// mins (bounding box) - SET AUTOMATICALLY
+	{0, 0, 0},					// max (bounding box) - SET AUTOMATICALLY
+	{30, 70, 20},				// turnspeed around the three axis (subs turn slowly)
+	{200, 1600, 700},			// camera distance {min,max,default} (long hull - sit well back)
+	{0, 500, 250},				// camera height {min,max,default}
+	0,							// stallspeed
+	40,						    // maxspeed
+	-5,							// min throttle
+	10,						    // max throttle
+	1,							// engines
+	0,							// wheels
+	0,							// wheel circumference
+	12,							// acceleration
+	600,						// health
+	{5, 0, 8},					// gun tag
+	200,						// max fuel
+	8,							// max angle to lean when turning <- gearheight
+	-5,							// bowangle (depends on speeed) <-tailangle
+	WI_MGT_12_7MM, WI_MGT_2X30MM, 0, WI_HELLFIRE, WI_STINGER, 0, 0, WI_CFLARE,// weapons  (slot 0 = WP_MACHINEGUN deck gun)
+	1000, 500, 0, 4, 4, 0, 0, 20,	// ammo
 	1,2,0,0,0,0,0,0,			// turret
 	{0, 0, 6},					// cameraposition for cockpit view
 	0,							// effect model
