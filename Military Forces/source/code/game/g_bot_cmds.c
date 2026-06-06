@@ -856,19 +856,7 @@ void MF_TrainingFrame( void )
 #define DRONE_STRIPS		6		/* number of zig-zag strips across the map */
 #define DRONE_CLEARANCE		600.0f	/* cruise height above the GROUND at map centre (under the skybox) */
 #define DRONE_STRIP_NAME_PREFIX "drone_swp_"
-
-/* ground height at (x,y): trace straight down and return the surface Z */
-static float MF_GroundAt( float x, float y, float fallback )
-{
-	trace_t	tr;
-	vec3_t	hi, lo;
-	VectorSet( hi, x, y, 16384 );
-	VectorSet( lo, x, y, -16384 );
-	SV_Trace( &tr, hi, NULL, NULL, lo, ENTITYNUM_NONE, MASK_SOLID, false );
-	if( tr.fraction < 1.0f && !tr.startsolid )
-		return tr.endpos[2];
-	return fallback;
-}
+#define DRONE_MIN_ALT		1000.0f	/* sane floor if a map has only low spawns */
 
 /*
   Bot_SpawnSurveillanceDrone
@@ -913,14 +901,15 @@ int Bot_SpawnSurveillanceDrone( void )
 		zMax = 600.0f;
 	}
 
-	/* Cruise altitude is TERRAIN-relative, not spawn-relative: norway has
-	   high air-spawns (~2000) so "highest spawn + clearance" shot the drone
-	   above the skybox. Trace down at the map centre and fly a sensible height
-	   above the actual ground; the bot's terrain-avoidance climbs over peaks. */
-	droneAlt = MF_GroundAt( (xMin + xMax) * 0.5f, (yMin + yMax) * 0.5f, zMax ) + DRONE_CLEARANCE;
+	/* Fly HIGH - as high as the map allows. Use the highest spawn point:
+	   mappers place air-spawns near the top of the usable airspace (below the
+	   skybox). NB: ground-tracing from the top hit the map's CEILING brush
+	   (-> 11928, in the void); spawn+clearance overshot the skybox. The raw
+	   highest spawn is the reliable "high but valid" altitude. */
+	droneAlt = zMax;
+	if( droneAlt < DRONE_MIN_ALT ) droneAlt = DRONE_MIN_ALT;
 
-	/* keep the sweep within the spawn bounds - corners (expanded) were hitting
-	   terrain / out-of-bounds and the drone "crashed" */
+	/* keep the sweep within the spawn bounds - corners were hitting terrain/OOB */
 
 	/* --- generate lawnmower strip waypoints --- */
 	xStep = (xMax - xMin) / (float)DRONE_STRIPS;
