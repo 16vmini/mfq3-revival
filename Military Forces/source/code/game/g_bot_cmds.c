@@ -931,8 +931,8 @@ int Bot_SpawnSurveillanceDrone( void )
 		botGlobals.waypointList.waypoints[i].nextWaypointIndex = next;
 	}
 
-	/* --- pick a plane vehicle --- */
-	planeIdx = MF_getIndexOfVehicleEx( -1, G_GetGameset(), MF_TEAM_ANY, CAT_PLANE, -1, -1, 0, false );
+	/* --- pick a plane vehicle (cat is an INDEX here: 0=plane, internally 1<<cat) --- */
+	planeIdx = MF_getIndexOfVehicleEx( -1, G_GetGameset(), MF_TEAM_ANY, 0, -1, -1, 0, false );
 	if( planeIdx < 0 )
 	{
 		Com_Printf( S_COLOR_RED "Bot_SpawnSurveillanceDrone: no plane vehicle available\n" );
