@@ -69,7 +69,7 @@ completeVehicleData_t availableVehicles[] =
 	"reaper",					// modelName
 	SHADOW_DEFAULT,				// alpha shadow
 	MF_GAMESET_MODERN,			// id
-	MF_TEAM_2,
+	MF_TEAM_1|MF_TEAM_2,		// both teams can fly the drone
 	CAT_PLANE,
 	CLASS_PLANE_FIGHTER,
 	0,							// flags
