@@ -154,10 +154,18 @@ static bool CG_DroneCam_ShouldShow( void )
 static void CG_DroneCam_Anchor( vec3_t out )
 {
 	if( s_droneTarget >= 0 && CG_IsViewableDrone( s_droneTarget ) )
+	{
+		// look DOWN from the drone itself, so the feed shows the GROUND beneath
+		// it (real ISR view) - not the drone seen from far above
 		VectorCopy( cg_entities[ s_droneTarget ].lerpOrigin, out );
+		out[2] -= 64.0f;	// just under the belly so the drone's own model doesn't fill the lens
+	}
 	else
-		VectorCopy( cg.predictedPlayerEntity.lerpOrigin, out );	// overhead fallback
-	out[2] += DRONECAM_ALT;
+	{
+		// no real drone selected: float a camera high above the player
+		VectorCopy( cg.predictedPlayerEntity.lerpOrigin, out );
+		out[2] += DRONECAM_ALT;
+	}
 }
 
 // 3D pass: render the drone's nadir view into the corner box, reusing the
