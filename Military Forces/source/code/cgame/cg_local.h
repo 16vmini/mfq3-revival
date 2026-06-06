@@ -612,6 +612,7 @@ typedef struct {
 	int				CameraMode;
 	int				CameraModeTime;
 	bool		drawingMFD;
+	bool		drawingDroneCam;	// MFQ3: rendering the drone PiP (show the player, unlike MFDs)
 	reticle_t		HUDReticle[ MAX_RETICLES ];
 	int				reticleIdx;
 	chat_t			*pCustomChat;	// custom chat data block
@@ -1332,6 +1333,7 @@ bool CG_DrawMissionEndBanner( void );
 // MFQ3 drone cam / PiP feed (cg_dronecam.c)
 void CG_DroneCam_Clear( void );
 void CG_DroneCam_Cmd( void );
+void CG_DroneZoom_Cmd( void );
 void CG_ListDrones( void );
 void CG_DroneCam_Render( void );
 void CG_DroneCam_Draw( void );

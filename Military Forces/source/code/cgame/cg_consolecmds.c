@@ -660,6 +660,7 @@ static consoleCommand_t	commands[] = {
 	{ "toggle_mfd1", CG_Toggle_MFD1_f },
 	{ "toggle_mfd2", CG_Toggle_MFD2_f },
 	{ "dronecam", CG_DroneCam_Cmd },
+	{ "dronezoom", CG_DroneZoom_Cmd },
 	{ "dronelist", CG_ListDrones },
 	{ "listdrones", CG_ListDrones },
 	{ "update_hud_color", CG_Update_HUD_Color_f },

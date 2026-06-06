@@ -652,8 +652,9 @@ void CG_Vehicle( centity_t *cent )
 		return;
     }
 
-	// don't draw ourselves, if we are rendering the MFDs
-	if( cent == &cg.predictedPlayerEntity && cg.drawingMFD )
+	// don't draw ourselves when rendering the MFDs - BUT do show us in the
+	// drone cam feed (that's the whole point of looking down at our position)
+	if( cent == &cg.predictedPlayerEntity && cg.drawingMFD && !cg.drawingDroneCam )
 	{
 		return;
 	}

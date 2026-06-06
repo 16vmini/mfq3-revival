@@ -24,13 +24,14 @@
 #define DRONECAM_Y		26.0f
 #define DRONECAM_W		150.0f
 #define DRONECAM_H		150.0f
-#define DRONECAM_ALT	1800.0f		// how high above the anchor the camera sits
-#define DRONECAM_FOV	18.0f		// narrow FOV = telephoto zoom (like a real drone)
+#define DRONECAM_ALT	1800.0f			// overhead-fallback height (when no real drone)
+#define DRONECAM_FOV_DEFAULT	18.0f	// default lens (deg): low = telephoto/zoom, high = wide
 #define DRONECAM_MAXLIST	16
 
 static bool	s_droneCamOn   = false;
 static int	s_droneTarget  = -1;	// entity number to view, -1 = overhead-above-player
 static int	s_droneIndex   = 1;		// 1-based list number (for the label)
+static float	s_droneFov = DRONECAM_FOV_DEFAULT;	// lens FOV (deg); set via "dronezoom"
 
 void CG_DroneCam_Clear( void )
 {
@@ -132,6 +133,20 @@ void CG_DroneCam_Cmd( void )
 	CG_Printf( s_droneCamOn ? "Drone cam: ON\n" : "Drone cam: OFF\n" );
 }
 
+// console: dronezoom <degrees> - set the drone cam lens (low = telephoto/zoom in, high = wide)
+void CG_DroneZoom_Cmd( void )
+{
+	if( Cmd_Argc() < 2 )
+	{
+		CG_Printf( "Drone cam lens: %.0f deg  (usage: dronezoom <5-120>; low=zoom in, high=wide)\n", s_droneFov );
+		return;
+	}
+	s_droneFov = atof( CG_Argv( 1 ) );
+	if( s_droneFov < 5.0f )   s_droneFov = 5.0f;
+	if( s_droneFov > 120.0f ) s_droneFov = 120.0f;
+	CG_Printf( "Drone cam lens -> %.0f deg\n", s_droneFov );
+}
+
 // On + the player is alive and flying/driving (not dead, selecting, spectating).
 // Auto-switches OFF on death so the feed doesn't linger through respawn.
 static bool CG_DroneCam_ShouldShow( void )
@@ -184,8 +199,8 @@ void CG_DroneCam_Render( void )
 	rx = DRONECAM_X; ry = DRONECAM_Y; rw = DRONECAM_W; rh = DRONECAM_H;
 	CG_AdjustFrom640( &rx, &ry, &rw, &rh );
 	cam.x = (int)rx; cam.y = (int)ry; cam.width = (int)rw; cam.height = (int)rh;
-	cam.fov_x = DRONECAM_FOV;
-	cam.fov_y = DRONECAM_FOV;
+	cam.fov_x = s_droneFov;
+	cam.fov_y = s_droneFov;
 
 	// straight down, regardless of drone heading (MVP)
 	VectorSet( camAngles, 90, 0, 0 );
@@ -196,10 +211,12 @@ void CG_DroneCam_Render( void )
 	// re-populate the scene for this viewpoint (the main RenderScene consumed it)
 	// - same sequence the MFD camera uses, so entities appear in the feed
 	cg.drawingMFD = true;
+	cg.drawingDroneCam = true;		// show the player's own vehicle in this view (unlike MFDs)
 	CG_AddPacketEntities();
 	CG_AddMarks();
 	CG_AddLocalEntities();
 	refExport.RenderScene( &cam );
+	cg.drawingDroneCam = false;
 	cg.drawingMFD = false;
 }
 
