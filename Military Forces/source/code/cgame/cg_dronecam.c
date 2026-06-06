@@ -1,64 +1,177 @@
 /*
  * MFQ3 drone camera ("DRONE CAM") - a picture-in-picture drone feed rendered as
- * a second viewport.
+ * a second viewport (straight-down / nadir view).
  *
- * MVP scope (per design): a SINGLE drone, a fixed straight-down (nadir) view
- * regardless of the drone's heading. For now the camera is anchored high above
- * the player so we can see the feed working without a spawned drone entity;
- * re-anchoring to a real friendly drone later is a one-line change (vieworg).
+ * Commands:
+ *   dronecam            toggle the feed on/off (keeps current target)
+ *   dronecam <n>        show drone #n (from "listdrones"); turns the feed on
+ *   dronecam off|0      turn the feed off
+ *   listdrones          list friendly ("your team") drones you can view
  *
- * Modeled on CG_HUD_Camera (cg_drawnewhud.c) - the engine's proven
- * second-RenderScene path.
+ * If no valid drone is selected it falls back to an overhead view above the
+ * player, so the feed is testable before real drone entities exist.
+ *
+ * RENDER NOTE: the 3D sub-render (CG_DroneCam_Render) runs in the 3D pass right
+ * after the main RenderScene, reusing the scene CG_DrawActiveFrame already
+ * built. It must NOT re-call CG_AddPacketEntities (that rewrites the predicted
+ * player entity / frame-interp globals and stalls movement). The 2D chrome
+ * (CG_DroneCam_Draw) only frames the box.
  */
 
 #include "cg_local.h"
 
+#define DRONECAM_X		470.0f		// feed box, 640x480 virtual coords (top-right)
+#define DRONECAM_Y		26.0f
+#define DRONECAM_W		150.0f
+#define DRONECAM_H		150.0f
 #define DRONECAM_ALT	1800.0f		// how high above the anchor the camera sits
 #define DRONECAM_FOV	55.0f
+#define DRONECAM_MAXLIST	16
 
-static bool	s_droneCamOn = false;
+static bool	s_droneCamOn   = false;
+static int	s_droneTarget  = -1;	// entity number to view, -1 = overhead-above-player
 
 void CG_DroneCam_Clear( void )
 {
-	s_droneCamOn = false;
+	s_droneCamOn  = false;
+	s_droneTarget = -1;
 }
 
-// console command "dronecam" - toggle the feed on/off
-void CG_DroneCam_Toggle( void )
+// Is this entity a "drone" we may view (a friendly aircraft/vehicle, not us)?
+static bool CG_IsViewableDrone( int num )
 {
-	s_droneCamOn = !s_droneCamOn;
+	centity_t*		c;
+	entityState_t*	s;
+
+	if( num < 0 || num >= MAX_GENTITIES )		return false;
+	if( !cg.snap || num == cg.snap->ps.clientNum )	return false;
+
+	c = &cg_entities[num];
+	if( !c->currentValid )						return false;
+	s = &c->currentState;
+
+	if( s->eType != ET_VEHICLE && s->eType != ET_MISC_VEHICLE )
+		return false;
+
+	// team filter only matters in team games; in FFA show all non-self flyers
+	if( cgs.gametype >= GT_TEAM &&
+		s->generic1 != cg.snap->ps.persistant[PERS_TEAM] )
+		return false;
+
+	return true;
+}
+
+// Collect viewable drones into list[]; returns the count.
+static int CG_GatherDrones( int* list, int maxList )
+{
+	int n = 0, num;
+	for( num = 0; num < MAX_GENTITIES && n < maxList; num++ )
+	{
+		if( CG_IsViewableDrone( num ) )
+			list[n++] = num;
+	}
+	return n;
+}
+
+// console: list friendly drones
+void CG_ListDrones( void )
+{
+	int	list[DRONECAM_MAXLIST];
+	int	count, i;
+
+	if( !cg.snap ) { CG_Printf( "Not in game.\n" ); return; }
+
+	count = CG_GatherDrones( list, DRONECAM_MAXLIST );
+	if( !count ) { CG_Printf( "No friendly drones in view.\n" ); return; }
+
+	CG_Printf( "Friendly drones (use \\dronecam <n>):\n" );
+	for( i = 0; i < count; i++ )
+	{
+		entityState_t*	s = &cg_entities[ list[i] ].currentState;
+		const char*		name = "vehicle";
+		if( s->modelindex >= 0 && s->modelindex < bg_numberOfVehicles )
+			name = availableVehicles[ s->modelindex ].descriptiveName;
+		CG_Printf( "  %d: %s (ent %d)\n", i + 1, name, list[i] );
+	}
+}
+
+// console: "dronecam", "dronecam <n>", "dronecam off"
+void CG_DroneCam_Cmd( void )
+{
+	if( Cmd_Argc() < 2 )
+	{
+		s_droneCamOn = !s_droneCamOn;			// bare toggle
+	}
+	else
+	{
+		const char* a = CG_Argv( 1 );
+		if( !Q_stricmp( a, "off" ) || !Q_stricmp( a, "0" ) )
+		{
+			s_droneCamOn = false;
+		}
+		else
+		{
+			int	list[DRONECAM_MAXLIST];
+			int	count = CG_GatherDrones( list, DRONECAM_MAXLIST );
+			int	n = atoi( a );
+			if( n >= 1 && n <= count )
+			{
+				s_droneTarget = list[n - 1];
+				CG_Printf( "Drone cam -> #%d\n", n );
+			}
+			else
+			{
+				s_droneTarget = -1;				// overhead fallback
+				CG_Printf( "No drone #%d (try \\listdrones) - showing overhead.\n", n );
+			}
+			s_droneCamOn = true;
+		}
+	}
 	CG_Printf( s_droneCamOn ? "Drone cam: ON\n" : "Drone cam: OFF\n" );
 }
 
-// Drawn each frame from CG_Draw2D. Renders a nadir view from high above the
-// anchor into a corner box (the "drone feed"), then overlays feed chrome.
-void CG_DroneCam_Draw( void )
+// On + the player is alive and flying/driving (not dead, selecting, spectating).
+// Auto-switches OFF on death so the feed doesn't linger through respawn.
+static bool CG_DroneCam_ShouldShow( void )
+{
+	if( !s_droneCamOn )		return false;
+	if( !cg.snap )			return false;
+
+	if( cg.snap->ps.pm_type == PM_DEAD ||
+		cg.snap->ps.stats[STAT_HEALTH] <= 0 ||
+		( cg.snap->ps.pm_flags & PMF_VEHICLESELECT ) ||
+		cg.snap->ps.persistant[PERS_TEAM] == ClientBase::TEAM_SPECTATOR )
+	{
+		s_droneCamOn = false;
+		return false;
+	}
+	return true;
+}
+
+// where the camera looks down from: the selected drone, else above the player
+static void CG_DroneCam_Anchor( vec3_t out )
+{
+	if( s_droneTarget >= 0 && CG_IsViewableDrone( s_droneTarget ) )
+		VectorCopy( cg_entities[ s_droneTarget ].lerpOrigin, out );
+	else
+		VectorCopy( cg.predictedPlayerEntity.lerpOrigin, out );	// overhead fallback
+	out[2] += DRONECAM_ALT;
+}
+
+// 3D pass: render the drone's nadir view into the corner box, reusing the
+// already-built scene (called right after the main RenderScene).
+void CG_DroneCam_Render( void )
 {
 	refdef_t	cam;
 	vec3_t		camAngles;
-	float		x, y, w, h;		// 640x480 virtual coords for the feed image
-	float		rx, ry, rw, rh;	// real pixels for the sub-render
-	vec4_t		green = { 0.10f, 0.90f, 0.30f, 0.85f };	// drone-feed green
-	vec4_t		black = { 0.00f, 0.00f, 0.00f, 1.00f };
+	float		rx, ry, rw, rh;
 
-	if( !s_droneCamOn )
-		return;
-	if( !cg.snap )					// no live view yet
+	if( !CG_DroneCam_ShouldShow() )
 		return;
 
-	// feed image rectangle (top-right corner)
-	x = 470; y = 26; w = 150; h = 150;
-
-	// panel: black backing + green border, with an 18px label strip below
-	CG_FillRect( x - 3, y - 3, w + 6, h + 21, black );
-	CG_FillRect( x - 3, y - 3,        w + 6, 2, green );
-	CG_FillRect( x - 3, y + h + 16,   w + 6, 2, green );
-	CG_FillRect( x - 3, y - 3,        2, h + 21, green );
-	CG_FillRect( x + w + 1, y - 3,    2, h + 21, green );
-
-	// build the sub-viewport refdef (mirror CG_HUD_Camera)
 	memcpy( &cam, &cg.refdef, sizeof( cam ) );
-	rx = x; ry = y; rw = w; rh = h;
+
+	rx = DRONECAM_X; ry = DRONECAM_Y; rw = DRONECAM_W; rh = DRONECAM_H;
 	CG_AdjustFrom640( &rx, &ry, &rw, &rh );
 	cam.x = (int)rx; cam.y = (int)ry; cam.width = (int)rw; cam.height = (int)rh;
 	cam.fov_x = DRONECAM_FOV;
@@ -68,21 +181,34 @@ void CG_DroneCam_Draw( void )
 	VectorSet( camAngles, 90, 0, 0 );
 	AnglesToAxis( camAngles, cam.viewaxis );
 
-	// MVP anchor: high above the player. (Later: the friendly drone's origin.)
-	VectorCopy( cg.predictedPlayerEntity.lerpOrigin, cam.vieworg );
-	cam.vieworg[2] += DRONECAM_ALT;
+	CG_DroneCam_Anchor( cam.vieworg );
 
-	// populate + render the second view (same sequence the MFD camera uses)
 	cg.drawingMFD = true;
-	CG_AddPacketEntities();
-	CG_AddMarks();
-	CG_AddLocalEntities();
-	refExport.RenderScene( &cam );
+	refExport.RenderScene( &cam );		// reuses the scene built this frame -> entities included
 	cg.drawingMFD = false;
+}
 
-	// feed chrome (2D overlay)
-	CG_DrawBigStringColor( (int)(x + 2), (int)(y + h + 1), "DRONE 01", green );
-	// centre reticle
+// 2D pass: frame the feed box (green border + label + reticle). No 3D render here.
+void CG_DroneCam_Draw( void )
+{
+	float	x = DRONECAM_X, y = DRONECAM_Y, w = DRONECAM_W, h = DRONECAM_H;
+	vec4_t	green = { 0.10f, 0.90f, 0.30f, 0.85f };
+	char	label[24];
+
+	if( !CG_DroneCam_ShouldShow() )
+		return;
+
+	CG_FillRect( x - 2, y - 2, w + 4, 2, green );
+	CG_FillRect( x - 2, y + h, w + 4, 2, green );
+	CG_FillRect( x - 2, y - 2, 2, h + 4, green );
+	CG_FillRect( x + w, y - 2, 2, h + 4, green );
+
+	if( s_droneTarget >= 0 && CG_IsViewableDrone( s_droneTarget ) )
+		Com_sprintf( label, sizeof(label), "DRONE %d", s_droneTarget );
+	else
+		Q_strncpyz( label, "DRONE 01", sizeof(label) );
+	CG_DrawBigStringColor( (int)(x + 3), (int)(y + 3), label, green );
+
 	CG_FillRect( x + w/2 - 6, y + h/2, 12, 1, green );
 	CG_FillRect( x + w/2, y + h/2 - 6, 1, 12, green );
 }

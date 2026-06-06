@@ -2298,6 +2298,10 @@ void CG_DrawActive( stereoFrame_t stereoView ) {
 		VectorCopy( baseOrg, cg.refdef.vieworg );
 	}
 
+	// MFQ3 drone cam: second viewport (nadir feed), reuses the scene just
+	// rendered above - must run here in the 3D pass, NOT in CG_Draw2D
+	CG_DroneCam_Render();
+
 	// draw status bar and other floating elements
 // 	CG_Draw2D();
 	CG_Draw2D_MFQ3();

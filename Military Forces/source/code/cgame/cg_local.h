@@ -1331,7 +1331,9 @@ void CG_DrawMissionGate2D( void );
 bool CG_DrawMissionEndBanner( void );
 // MFQ3 drone cam / PiP feed (cg_dronecam.c)
 void CG_DroneCam_Clear( void );
-void CG_DroneCam_Toggle( void );
+void CG_DroneCam_Cmd( void );
+void CG_ListDrones( void );
+void CG_DroneCam_Render( void );
 void CG_DroneCam_Draw( void );
 void CG_DrawActive( stereoFrame_t stereoView );
 void CG_DrawFlagModel( float x, float y, float w, float h, int team, bool force2D );
