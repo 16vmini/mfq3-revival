@@ -74,7 +74,7 @@ completeVehicleData_t availableVehicles[] =
 	CLASS_PLANE_FIGHTER,
 	0,							// flags
 	HC_GEAR|HC_SPEEDBRAKE|
-	HC_VAPOR,					// capabilities
+	HC_VAPOR|HC_PROP,			// capabilities (pusher turboprop -> spinning prop part)
 	{0,0,0,0,0,0,0,0,0,0},		// handles - SET AUTOMATICALLY
 	{0, 0, 0},					// mins (bounding box) - SET AUTOMATICALLY
 	{0, 0, 0},					// max (bounding box) - SET AUTOMATICALLY
@@ -105,7 +105,7 @@ completeVehicleData_t availableVehicles[] =
 	-1,							// trackcone ground
 	0,							// swingangle
 	1400,						// geartime
-	0,							// max gear frame
+	47,							// max gear frame (48-frame procedural retract: reaper_gear.md3)
 	1000,						// baytime
 	0,							// max bay frame
 	0,							// renderflags
@@ -670,7 +670,7 @@ completeVehicleData_t availableVehicles[] =
 	"gr7",						// modelName
 	SHADOW_DEFAULT,				// alpha shadow
 	MF_GAMESET_MODERN,			// id
-	MF_TEAM_1,
+	MF_TEAM_1|MF_TEAM_2,		// both teams (so it's selectable regardless of side)
 	CAT_PLANE,
 	CLASS_PLANE_FIGHTER,
 	0,							// flags
