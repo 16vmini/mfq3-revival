@@ -3440,6 +3440,54 @@ completeVehicleData_t availableVehicles[] =
 	0,							// renderflags
 	{0,0,0,0},					// shadow coordinates
 	{0,0,0,0}					// shadow orientation adjusters
+    },
+
+    {	"SR-71 Blackbird",			// descriptiveName
+	"SR-71",					// tinyName
+	"sr71",						// modelName
+	SHADOW_DEFAULT,				// alpha shadow
+	MF_GAMESET_MODERN,			// id
+	MF_TEAM_1|MF_TEAM_2,		// both teams
+	CAT_PLANE,
+	CLASS_PLANE_FIGHTER,		// fast recon / interceptor
+	0,							// flags
+	HC_SPEEDBRAKE|HC_VAPOR,		// capabilities (gear is static in this model)
+	{0,0,0,0,0,0,0,0,0,0},		// handles - SET AUTOMATICALLY
+	{0, 0, 0},					// mins (bounding box) - SET AUTOMATICALLY
+	{0, 0, 0},					// max (bounding box) - SET AUTOMATICALLY
+	{55, 45, 200},				// turnspeed (big jet, not nimble)
+	{0, 160, 110},				// camera distance {min,max,default}
+	{0, 120, 35},				// camera height {min,max,default}
+	220,						// stallspeed (fast)
+	1200,						// maxspeed (Mach 3 - fastest in game)
+	0,							// min throttle
+	20,							// max throttle
+	2,							// engines
+	0,							// wheels
+	0,							// wheel circumference
+	220,						// acceleration
+	150,						// health
+	{30.0f, 0.0f, 0.0f},		// gun tag
+	120,						// max fuel
+	0,							// gearheight - SET AUTOMATICALLY
+	0,							// tailangle
+	WI_MG_20MM, WI_AMRAAM, WI_SIDEWINDER, WI_MK82, WI_CM, 0, 0, WI_FLARE,	// weapons
+	450, 4, 4, 8, 2, 0, 0, 30,	// ammo
+	0,0,0,0,0,0,0,0,			// turret
+	{25, 0, 6},					// cameraposition for cockpit view
+	AB_BALL,					// effect model
+	14000,						// radar range
+	10000,						// radar range ground
+	0,							// trackcone
+	-1,							// trackcone ground
+	0,							// swingangle
+	1400,						// geartime
+	0,							// max gear frame
+	1000,						// baytime
+	0,							// max bay frame
+	0,							// renderflags
+	{4,0,34,24},				// shadow coordinates
+	{0,0,0,0}					// shadow orientation adjusters
     }
 };
 
