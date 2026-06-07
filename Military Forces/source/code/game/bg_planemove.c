@@ -126,13 +126,16 @@ void PM_Toggle_VTOL()
 		return;
 	}
 	if( pm->ps->ONOFF & OO_VTOL ) {
-		// hover -> wing: only allowed with enough airspeed to actually fly, otherwise
-		// the jet drops into wing mode at ~0 kts, instantly stalls and crashes.
-		// Too slow? stay in hover (pitch forward to build speed first).
-		if( pm->ps->speed < availableVehicles[pm->vehicle].stallspeed * 10 * 1.2f )
+		// hover -> wing: when AIRBORNE, only allowed with enough airspeed to actually
+		// fly, else the jet drops into wing mode at ~0 kts, stalls and crashes. When
+		// LANDED it's always fine (no stall on the ground), so V can toggle freely there.
+		if( !(pm->ps->ONOFF & OO_LANDED) &&
+			pm->ps->speed < availableVehicles[pm->vehicle].stallspeed * 10 * 1.2f )
 			return;
+		bool wasLanded = (pm->ps->ONOFF & OO_LANDED) != 0;
 		pm->ps->ONOFF &= ~(OO_VTOL|OO_STALLED);		// back to wing-borne flight
-		pm->ps->fixed_throttle = availableVehicles[pm->vehicle].maxthrottle;	// flying power so it sustains
+		// on the ground stay parked (throttle 0); airborne give flying power so it sustains
+		pm->ps->fixed_throttle = wasLanded ? 0 : availableVehicles[pm->vehicle].maxthrottle;
 	} else {
 		pm->ps->ONOFF |= OO_VTOL;			// hover mode (flies via PM_HeloMove)
 		// hand off cleanly to the helo model: shed wing-borne forward speed, drop

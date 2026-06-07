@@ -161,6 +161,24 @@ void CG_DrawPlane(DrawInfo_Plane_t* drawInfo)
 	
 	part[BP_PLANE_COCKPIT].frame = drawInfo->cockpitFrame;
 
+	// VTOL doors/nozzle (special slot): eased frame from OO_VTOL.
+	// md3 is built gear-style: frame 0 = fully deployed (open), last frame = stowed (closed).
+	{
+		static float vtolAnim[MAX_GENTITIES];
+		static int   vtolLast[MAX_GENTITIES];
+		int en = drawInfo->basicInfo.entityNum;
+		if( en >= 0 && en < MAX_GENTITIES ) {
+			float target = (drawInfo->basicInfo.ONOFF & OO_VTOL) ? 1.0f : 0.0f;
+			int dt = cg.time - vtolLast[en]; vtolLast[en] = cg.time;
+			if( dt < 0 || dt > 250 ) dt = 0;
+			float step = (float)dt / 1500.0f;	// ~1.5s open/close
+			if( vtolAnim[en] < target ) { vtolAnim[en] += step; if( vtolAnim[en] > target ) vtolAnim[en] = target; }
+			else if( vtolAnim[en] > target ) { vtolAnim[en] -= step; if( vtolAnim[en] < target ) vtolAnim[en] = target; }
+			part[BP_PLANE_SPECIAL].frame    = (int)((1.0f - vtolAnim[en]) * 47.0f + 0.5f);
+			part[BP_PLANE_SPECIAL].oldframe = part[BP_PLANE_SPECIAL].frame;
+		}
+	}
+
     // plane body
     part[BP_PLANE_BODY].hModel = veh->handle[BP_PLANE_BODY];
     VectorCopy( drawInfo->basicInfo.origin, part[BP_PLANE_BODY].origin );
