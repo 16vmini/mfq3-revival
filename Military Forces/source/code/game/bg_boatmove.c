@@ -747,8 +747,12 @@ bool PM_SlideMove_Sub()
 	// move with the hull bbox, colliding with solids
 	pm->trace( &trace, pm->ps->origin, pm->mins, pm->maxs, end, pm->ps->clientNum, pm->tracemask, false );
 	if( trace.allsolid ) {
-		pm->ps->velocity[2] = 0;	// trapped - bleed vertical, allow steering out
-		return true;
+		// hull box wedged (dock floor / piers) - retry as a point so it can move out
+		pm->trace( &trace, pm->ps->origin, NULL, NULL, end, pm->ps->clientNum, pm->tracemask, false );
+		if( trace.allsolid ) {
+			pm->ps->velocity[2] = 0;	// truly trapped - bleed vertical, allow steering out
+			return true;
+		}
 	}
 	VectorCopy( trace.endpos, pm->ps->origin );
 	if( trace.fraction < 1.0f ) {
