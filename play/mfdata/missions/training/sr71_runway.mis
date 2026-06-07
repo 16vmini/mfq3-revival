@@ -1,0 +1,30 @@
+// MFQ3 Training - SR-71 on the runway (gear down)
+// Spawns the SR-71 Blackbird on the Norway airstrip so we can see the gear DOWN,
+// then watch the nose + 2 main bogies retract on takeoff.
+Overview
+{
+	map	mfq3_norway
+	gameset	1
+	gametype	0
+	mission	"SR-71 Takeoff"
+	goal	TakeOff
+	order	11
+	description	"An SR-71 Blackbird parked on the Norway airstrip."
+	briefing	"You're in the SR-71, gear down on the strip. Throttle up, roll, rotate - watch the gear fold up forward as you climb out. (Fastest jet in the game.)"
+	success	"Airborne - gear up and accelerating."
+	failure	"You went down. Reset and try again."
+}
+Entities
+{
+	PlayerStart
+	{
+		Index	61
+		Origin	-5700.8;5772.9;500.0
+		Angles	0.0;-87.6;0.0
+		Speed	0
+	}
+}
+Objectives
+{
+	Objective { Type altitude  Op >  Value 500  Text "Climb to 500 ft (gear retracts on takeoff)" }
+}
