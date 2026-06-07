@@ -287,7 +287,7 @@ void MF_ClientSpawn( int clientNum, long cs_flags, const spawnpoint_t *startOver
 	// vehicle index for next spawning
 	int vehIndex = atoi( Info_ValueForKey( userinfo, "cg_nextVehicle" ) );
 
-	// MFQ3 mission PlayerStart: the human host flies the .mis-specified jet
+	// MFQ3 mission PlayerStart: the human host flies the .mis-specified vehicle
 	{
 		GameClient* mcl = theLevel.getClient( clientNum );
 		int psVeh;
@@ -570,10 +570,23 @@ void MF_ClientSpawn( int clientNum, long cs_flags, const spawnpoint_t *startOver
 			}
 			MF_Spawn_GroundVehicle( ent, vehIndex );
 		} 
-		else if( availableVehicles[vehIndex].cat & CAT_HELO ) 
+		else if( availableVehicles[vehIndex].cat & CAT_HELO )
 		{
-			MF_Spawn_Helo( ent, vehIndex, false );
-		} 
+			// if there's ground close below the spawn point, start LANDED on it
+			// (gear down, throttle 0); otherwise spawn airborne/hovering as before
+			trace_t	trace;
+			vec3_t	endpos;
+			bool	heloLanded = false;
+			VectorCopy( spawn_origin, endpos );
+			endpos[2] -= 512;
+			SV_Trace( &trace, spawn_origin, NULL, NULL, endpos, ENTITYNUM_NONE, MASK_SOLID, false );
+			if( trace.entityNum != ENTITYNUM_NONE )
+			{
+				spawn_origin[2] = trace.endpos[2] - availableVehicles[vehIndex].mins[2] + 1;
+				heloLanded = true;
+			}
+			MF_Spawn_Helo( ent, vehIndex, heloLanded );
+		}
 		else if( availableVehicles[vehIndex].cat & CAT_LQM ) 
 		{
 			trace_t	trace;

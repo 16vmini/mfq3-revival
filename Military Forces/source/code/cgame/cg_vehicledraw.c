@@ -198,7 +198,13 @@ void CG_DrawPlane(DrawInfo_Plane_t* drawInfo)
 				refExport.AddRefEntityToScene( &engine );
 			}
 		}
-		if( (veh->caps & HC_SWINGWING) && 
+		// lift fan (F-35B etc): the fan lives in the prop slot and spins around the
+		// VERTICAL axis, but only while VTOL mode is engaged.
+		if( i == BP_PLANE_PROP && (veh->caps & HC_VTOL) && (drawInfo->basicInfo.ONOFF & OO_VTOL) )
+		{
+			RotateAroundYaw( part[i].axis, cg.time * 0.5f );
+		}
+		if( (veh->caps & HC_SWINGWING) &&
 			(i == BP_PLANE_WINGLEFT || i == BP_PLANE_WINGRIGHT)  ) 
 		{
 			//Com_Printf( "Swingwing: %f\n", drawInfo->swingAngle );
@@ -553,22 +559,69 @@ refEntity_t	    part[BP_HELO_MAX_PARTS];
 
 
 	// rotors
-	for( i = BP_HELO_MAINROTOR; i <= BP_HELO_TAILROTOR; i++ ) {
-		part[i].hModel = veh->handle[i];
-		if( !part[i].hModel ) {
-			continue;
-		}
-		VectorCopy( drawInfo->basicInfo.origin, part[i].lightingOrigin );
-		AxisCopy( axisDefault, part[i].axis );
-		if( i == BP_HELO_MAINROTOR ) 
-			RotateAroundYaw( part[i].axis, cg.time*1.25+drawInfo->basicInfo.entityNum*100 );	// make rotors more random by entitynum so it doesnt look stupid in a screenshot when everyone has the same rotor position
-		if( i == BP_HELO_TAILROTOR )
-			RotateAroundPitch( part[i].axis, cg.time*1.25+drawInfo->basicInfo.entityNum*100);
+	//
+	// Rotors are STATIC only when the helo is truly cold on the ground:
+	// landed AND throttle at/below zero AND not moving. As soon as the pilot
+	// powers up (throttle>0) or the helo is airborne (OO_LANDED cleared) or
+	// moving (speed>0, e.g. a hover), the blades spin. We persist a per-entity
+	// spool factor (0..1) and ease it so the disc ramps up/down instead of
+	// snapping, and we accumulate the spin angle from that factor so changing
+	// speed doesn't cause the blades to visually jump.
+	{
+		static float	rotorSpool[MAX_GENTITIES];	// 0 = stopped, 1 = full rpm
+		static float	rotorAngle[MAX_GENTITIES];	// accumulated blade angle (deg)
+		static int		rotorLastTime[MAX_GENTITIES];
+		int				en = drawInfo->basicInfo.entityNum;
+		float			spin = 0.0f;
+		bool			cold;
 
-		CG_PositionRotatedEntityOnTag( &part[i], &part[BP_HELO_BODY], veh->handle[BP_HELO_BODY], helo_tags[i] );
-		part[i].shadowPlane = shadowPlane;
-		part[i].renderfx = renderfx;
-		refExport.AddRefEntityToScene( &part[i] );
+		if( en < 0 || en >= MAX_GENTITIES ) en = 0;	// safety
+
+		// truly cold = landed (on deck or terrain) with no power and no motion
+		cold = ( (drawInfo->basicInfo.ONOFF & OO_LANDED) != 0 )
+			&& ( drawInfo->basicInfo.throttle <= 0 )
+			&& ( drawInfo->basicInfo.speed < 5.0f );
+
+		// frame time for this entity (clamped so a respawn/teleport can't jump)
+		{
+			int dt = cg.time - rotorLastTime[en];
+			rotorLastTime[en] = cg.time;
+			if( dt < 0 || dt > 250 ) dt = 0;	// paused / first frame / huge gap
+
+			// ease the spool toward target (full power up in ~1.2s, spin down ~2s)
+			if( cold ) {
+				rotorSpool[en] -= (float)dt / 2000.0f;
+				if( rotorSpool[en] < 0.0f ) rotorSpool[en] = 0.0f;
+			} else {
+				rotorSpool[en] += (float)dt / 1200.0f;
+				if( rotorSpool[en] > 1.0f ) rotorSpool[en] = 1.0f;
+			}
+
+			// accumulate angle from current spool (1.25 deg/ms at full rpm)
+			rotorAngle[en] += rotorSpool[en] * 1.25f * (float)dt;
+		}
+		// per-entity phase offset so identical helos don't share blade positions
+		spin = rotorAngle[en] + (float)en * 100.0f;
+
+		for( i = BP_HELO_MAINROTOR; i <= BP_HELO_TAILROTOR; i++ ) {
+			part[i].hModel = veh->handle[i];
+			if( !part[i].hModel ) {
+				continue;
+			}
+			VectorCopy( drawInfo->basicInfo.origin, part[i].lightingOrigin );
+			AxisCopy( axisDefault, part[i].axis );
+			if( rotorSpool[en] > 0.0f ) {
+				if( i == BP_HELO_MAINROTOR )
+					RotateAroundYaw( part[i].axis, spin );
+				if( i == BP_HELO_TAILROTOR )
+					RotateAroundPitch( part[i].axis, spin );
+			}
+
+			CG_PositionRotatedEntityOnTag( &part[i], &part[BP_HELO_BODY], veh->handle[BP_HELO_BODY], helo_tags[i] );
+			part[i].shadowPlane = shadowPlane;
+			part[i].renderfx = renderfx;
+			refExport.AddRefEntityToScene( &part[i] );
+		}
 	}
 
 

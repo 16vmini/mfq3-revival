@@ -32,6 +32,7 @@ void SP_info_player_deathmatch( GameEntity *ent )
 	
 	// update level information
 	theLevel.ent_category_ |= ent->ent_category_;
+	theLevel.ent_category_ |= CAT_HELO;	// revival: allow helicopters everywhere (maps had them spawn-restricted)
 
 	Cvar_Set( "mf_lvcat", va("%i", theLevel.ent_category_) );
 

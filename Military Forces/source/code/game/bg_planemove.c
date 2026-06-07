@@ -111,6 +111,52 @@ void PM_Toggle_Bay()
 
 /*
 ===================
+PM_Toggle_VTOL   (F-35B / Harrier hover mode)
+
+Flips OO_VTOL. Cosmetic + flight behaviour key off this bit; the nozzle/door
+animation follows it. Debounced so a held key only toggles once.
+===================
+*/
+void PM_Toggle_VTOL()
+{
+	if( !(availableVehicles[pm->vehicle].caps & HC_VTOL) ) {
+		return;
+	}
+	if( pm->cmd.serverTime < pm->ps->timers[TIMER_VTOL] ) {
+		return;
+	}
+	if( pm->ps->ONOFF & OO_VTOL ) {
+		// hover -> wing: only allowed with enough airspeed to actually fly, otherwise
+		// the jet drops into wing mode at ~0 kts, instantly stalls and crashes.
+		// Too slow? stay in hover (pitch forward to build speed first).
+		if( pm->ps->speed < availableVehicles[pm->vehicle].stallspeed * 10 * 1.2f )
+			return;
+		pm->ps->ONOFF &= ~(OO_VTOL|OO_STALLED);		// back to wing-borne flight
+		pm->ps->fixed_throttle = availableVehicles[pm->vehicle].maxthrottle;	// flying power so it sustains
+	} else {
+		pm->ps->ONOFF |= OO_VTOL;			// hover mode (flies via PM_HeloMove)
+		// hand off cleanly to the helo model: shed wing-borne forward speed, drop
+		// the landed flags (else PM_HeloMove's taxi branch eats the lift) and start
+		// from zero throttle so the pilot powers up into a hover.
+		pm->ps->speed = 0;
+		pm->ps->fixed_throttle = 0;
+		pm->ps->ONOFF |= OO_STALLED;
+		// NOTE: do NOT clear OO_LANDED here. If on the ground, staying landed lets the
+		// helo "sit still" branch hold it in place (no forward creep); powering up then
+		// clears OO_LANDED and lifts off. If already airborne it isn't landed anyway.
+		// PM_HeloMove derives forward/side speed from vehicleAngles PITCH/ROLL, so any
+		// leftover wing-flight attitude would push the jet forward on engage. Level the
+		// attitude (keep heading) and zero residual momentum for a clean stationary hover.
+		pm->ps->vehicleAngles[PITCH] = 0;
+		pm->ps->vehicleAngles[ROLL] = 0;
+		VectorClear( pm->ps->velocity );
+	}
+	pm->ps->timers[TIMER_VTOL] = pm->cmd.serverTime + 500;
+}
+
+
+/*
+===================
 PM_Plane_FuelFlow
 
 ===================
@@ -265,6 +311,11 @@ void PM_PlaneMove( void )
 	// bay
 	if( !dead && (pm->cmd.buttons & BUTTON_WEAPONBAY) ) {
 		PM_Toggle_Bay();
+	}
+
+	// VTOL mode toggle (F-35B / Harrier)
+	if( !dead && (pm->cmd.buttons & BUTTON_VTOL) ) {
+		PM_Toggle_VTOL();
 	}
 
 	// bayanim
@@ -545,6 +596,11 @@ void PM_PlaneMoveAdvanced( void )
 	// bay
 	if( !dead && (pm->cmd.buttons & BUTTON_WEAPONBAY) ) {
 		PM_Toggle_Bay();
+	}
+
+	// VTOL mode toggle (F-35B / Harrier)
+	if( !dead && (pm->cmd.buttons & BUTTON_VTOL) ) {
+		PM_Toggle_VTOL();
 	}
 
 	// bayanim

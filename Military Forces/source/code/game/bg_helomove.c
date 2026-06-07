@@ -341,6 +341,11 @@ void PM_HeloMove( void )
 	pm->ps->ONOFF &= ~OO_VAPOR;
 
 
+	// VTOL toggle: a VTOL-capable plane hovering via this helo model can switch back to wing flight
+	if( !dead && (availableVehicles[pm->vehicle].caps & HC_VTOL) && (pm->cmd.buttons & BUTTON_VTOL) ) {
+		PM_Toggle_VTOL();
+	}
+
 	// gear
 	if( !dead && (pm->cmd.buttons & BUTTON_GEAR) ) {
 		PM_Toggle_HeloGear();
@@ -376,6 +381,11 @@ void PM_HeloMove( void )
     // local vectors
     VectorCopy( pm->ps->vehicleAngles, vehdir );
 	if( pm->ps->ONOFF & OO_LANDED ) vehdir[PITCH] = vehdir[ROLL] = 0;
+
+	// VTOL (F-35 etc): throttle is a pure-lift collective - clamp into the lift
+	// band so full power climbs instead of crossing into the helo "descend" range.
+	if( (pm->ps->ONOFF & OO_VTOL) && throttle > maxthrottle )
+		pm->ps->fixed_throttle = throttle = maxthrottle;
 
 	//
 	// Set current speeds (Do it here to allow more realistic crash)
@@ -456,7 +466,11 @@ void PM_HeloMove( void )
 
 	// ground movement
 	if( pm->ps->ONOFF & OO_LANDED ) {
-		if(!(pm->ps->ONOFF & OO_LANDEDTERRAIN)) {
+		// sit still on the ground - no taxi/slide; power up to lift straight off
+		VectorClear( deltavel );
+		pm->ps->speed = 0;
+		if( throttle > 0 ) pm->ps->ONOFF &= ~(OO_LANDED|OO_LANDEDTERRAIN);	// vertical takeoff
+		if( 0 ) {	// (legacy ground-taxi disabled)
 			if(pm->cmd.forwardmove > 0) {
 					VectorCopy(vehdir, forwardvel);
 					forwardvel[PITCH] = forwardvel[ROLL] = 0;

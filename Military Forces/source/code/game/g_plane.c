@@ -8,6 +8,12 @@
 // ugly first-cut function!
 void checkTakeoffLandingPlane( gentity_t *self )
 {
+	// VTOL-capable plane in hover mode: the helicopter movement model owns
+	// ground/lift while OO_VTOL is set, so skip all plane takeoff/landing logic
+	// (otherwise it re-flags OO_LANDED every frame and the hover lift is discarded).
+	if( self->client->ps.ONOFF & OO_VTOL )
+		return;
+
 	trace_t	trace;
 	vec3_t	startpos;
 	vec3_t	endpos;

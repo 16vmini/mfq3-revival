@@ -202,7 +202,8 @@ typedef enum {
 	TIMER_BAY,
 	TIMER_BAYANIM,
 	TIMER_BAYCLOSE,
-	TIMER_FLARE
+	TIMER_FLARE,
+	TIMER_VTOL
 } timerIndex_t;
 
 // player_state->persistant[] indexes
@@ -1178,6 +1179,7 @@ int MF_findWeaponsOfType( int weaponIndex, completeLoadout_t* loadout );
 #define HC_AMPHIBIOUS			128
 #define	HC_WHEELS				256	// vehicle has wheels (rather than tracks)
 #define	HC_WEAPONBAY			512
+#define	HC_VTOL					1024	// can toggle VTOL/hover mode (F-35B / Harrier)
 
 // LQM Animations (replace instead of using frame index, and let CG read animation.cfg)
 #define LQM_SCALE				0.1f
@@ -1204,6 +1206,7 @@ int MF_findWeaponsOfType( int weaponIndex, completeLoadout_t* loadout );
 #define OO_RADAR_GROUND			128
 #define OO_RADAR				192	// OO_RADAR_GROUND|OO_RADAR_AIR
 #define OO_LANDEDTERRAIN		256
+#define OO_VTOL					512		// VTOL/hover mode engaged (F-35B / Harrier)
 
 // afterburners
 #define AB_BALL					0

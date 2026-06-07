@@ -113,6 +113,55 @@ completeVehicleData_t availableVehicles[] =
 	{0,0,0,0}					// shadow orientation adjusters
     },
 
+    {	"F-35B Lightning II",		// descriptiveName
+	"F-35B",					// tinyName
+	"f35",						// modelName
+	SHADOW_DEFAULT,				// alpha shadow
+	MF_GAMESET_MODERN,			// id
+	MF_TEAM_1|MF_TEAM_2,		// both teams
+	CAT_PLANE,
+	CLASS_PLANE_FIGHTER,
+	0,							// flags
+	HC_GEAR|HC_SPEEDBRAKE|
+	HC_VAPOR|HC_VTOL,			// capabilities (HC_VTOL: hover/VTOL mode toggle)
+	{0,0,0,0,0,0,0,0,0,0},		// handles - SET AUTOMATICALLY
+	{0, 0, 0},					// mins (bounding box) - SET AUTOMATICALLY
+	{0, 0, 0},					// max (bounding box) - SET AUTOMATICALLY
+	{90, 65, 300},				// turnspeed around the three axis
+	{0, 100, 70},				// camera distance {min,max,default}
+	{0, 100, 20},				// camera height {min,max,default}
+	180,						// stallspeed
+	950,						// maxspeed
+	0,							// min throttle
+	15,							// max throttle
+	1,							// engines
+	0,							// wheels
+	0,							// wheel circumference
+	300,						// acceleration
+	150,						// health
+	{16.0f, 0.0f, 0.0f},		// gun tag
+	60,							// max fuel
+	0,							// gearheight - SET AUTOMATICALLY
+	0,							// tailangle
+	WI_MG_20MM, WI_SIDEWINDER, WI_AMRAAM, 0, 0, 0, 0, WI_FLARE,	// weapons
+	450, 4, 4, 0, 0, 0, 0, 30,		// ammo
+	0,0,0,0,0,0,0,0,			// turret
+	{19, 0, 5},					// cameraposition for cockpit view
+	AB_BALL,					// effect model
+	12000,						// radar range
+	9000,						// radar range ground
+	0,							// trackcone
+	-1,							// trackcone ground
+	0,							// swingangle
+	1400,						// geartime
+	47,							// max gear frame (48-frame procedural retract: f35_gear.md3)
+	1000,						// baytime
+	0,							// max bay frame
+	0,							// renderflags
+	{4,0,34,24},				// shadow coordinates
+	{0,0,0,0}					// shadow orientation adjusters
+    },
+
     {	"F-16 Falcon (AG - MK82)",	    // descriptiveName
 	"F-16",						// tinyName
 	"f-16",						// modelName
@@ -3101,7 +3150,7 @@ completeVehicleData_t availableVehicles[] =
 	"hind",						// modelName
 	SHADOW_DEFAULT,				// alpha shadow
 	MF_GAMESET_MODERN,			// id
-	MF_TEAM_2,
+	MF_TEAM_1|MF_TEAM_2,		// both teams (so it's selectable regardless of side)
 	CAT_HELO,
 	CLASS_HELO_ATTACK,
 	0,							// flags

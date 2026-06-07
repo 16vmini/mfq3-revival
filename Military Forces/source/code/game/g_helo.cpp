@@ -54,7 +54,7 @@ Entity_Helicopter::checkForTakeoffOrLanding()
 		// check for landing
 		if( trace.fraction == 1.0 ) 
 			return;
-		if( trace.entityNum != ENTITYNUM_NONE && (client_->ps_.ONOFF & OO_GEAR) ) 
+		if( trace.entityNum != ENTITYNUM_NONE && (client_->ps_.ONOFF & OO_GEAR) && throttle <= 0 ) 
 		{
 			if( client_->ps_.vehicleAngles[0] < 30 &&
 				client_->ps_.vehicleAngles[0] >= 0 )

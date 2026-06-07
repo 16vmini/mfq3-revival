@@ -7,6 +7,12 @@
 void
 Entity_Plane::checkForTakeoffOrLanding()
 {
+	// VTOL-capable plane in hover mode: the helicopter movement model owns
+	// ground/lift while OO_VTOL is set, so skip all plane takeoff/landing logic
+	// (otherwise it re-flags OO_LANDED every frame and the hover lift is discarded).
+	if( client_->ps_.ONOFF & OO_VTOL )
+		return;
+
 	trace_t	trace;
 	vec3_t	startpos;
 	vec3_t	endpos;

@@ -845,9 +845,20 @@ PM_VehicleMove
 */
 static void PM_VehicleMove( void ) 
 {
-	if( availableVehicles[pm->vehicle].cat & CAT_PLANE ) 
+	if( availableVehicles[pm->vehicle].cat & CAT_PLANE )
 	{
-		if( pm->advancedControls )
+		// auto hover->wing: once VTOL forward airspeed is enough to fly, drop to
+		// wing mode (with flying power) so it doesn't stall when transitioning.
+		if( (pm->ps->ONOFF & OO_VTOL) && (availableVehicles[pm->vehicle].caps & HC_VTOL) &&
+			pm->ps->speed >= availableVehicles[pm->vehicle].stallspeed * 10 * 1.3f )
+		{
+			pm->ps->ONOFF &= ~(OO_VTOL|OO_STALLED);
+			pm->ps->fixed_throttle = availableVehicles[pm->vehicle].maxthrottle;
+		}
+		// VTOL-capable plane in hover mode flies via the helicopter model
+		if( (pm->ps->ONOFF & OO_VTOL) && (availableVehicles[pm->vehicle].caps & HC_VTOL) )
+			PM_HeloMove();
+		else if( pm->advancedControls )
 			PM_PlaneMoveAdvanced();
 		else
 			PM_PlaneMove();

@@ -56,6 +56,7 @@ void PM_AddEvent( int newEvent );
 void PM_PlaneMove( void );
 void PM_PlaneMoveAdvanced( void );
 void PM_Toggle_Bay();
+void PM_Toggle_VTOL();
 void PM_GroundVehicleMove( void );
 void PM_HeloMove( void );
 void PM_LQMMove( void );

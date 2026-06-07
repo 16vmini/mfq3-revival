@@ -1369,7 +1369,7 @@ struct ClientBase
 #define	BUTTON_TALK			2			// displays talk balloon and disables actions
 #define	BUTTON_ATTACK_MAIN	4			// MFQ3 secondary fire "+button2"
 #define BUTTON_WEAPONBAY	8			// MFQ3 weaponbay "+button3"
-#define BUTTON_XXX2			16
+#define BUTTON_XXX2			16			// (client walking flag - do not reuse)
 #define BUTTON_INCREASE		32			// MFQ3	throttle "+button5"
 #define BUTTON_DECREASE		64			// MFQ3 throttle "+button6"
 #define BUTTON_GEAR			128			// MFQ3 gear "+button7"
@@ -1378,6 +1378,8 @@ struct ClientBase
 #define BUTTON_FLARE		1024		// MFQ3 flare "+button10"
 
 #define	BUTTON_ANY			2048			// any key whatsoever
+
+#define BUTTON_VTOL			4096		// MFQ3 VTOL mode toggle "+button12" (bit 12 < 16 networked; F-35B / Harrier)
 
 
 #define	MOVE_RUN			120			// if forwardmove or rightmove are >= MOVE_RUN,

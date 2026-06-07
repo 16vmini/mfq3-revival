@@ -1352,6 +1352,10 @@ static void CG_Draw_MFD(int mfdnum, int vehicle, centity_t * cent, int targetran
 		CG_DrawString_MFQ3_R( x+122, y+40, (onoff & OO_SPEEDBRAKE ? "ON" : "OFF"), HUDColors[cg.MFDColor], 0);
 		CG_DrawString_MFQ3( x+4, y+50, "WPNBAYS:", HUDColors[cg.MFDColor], 0);
 		CG_DrawString_MFQ3_R( x+122, y+50, (onoff & OO_WEAPONBAY ? "OPEN" : "CLSD"), HUDColors[cg.MFDColor], 0);
+		if( availableVehicles[vehicle].caps & HC_VTOL ) {
+			CG_DrawString_MFQ3( x+4, y+70, "VTOL:", HUDColors[cg.MFDColor], 0);
+			CG_DrawString_MFQ3_R( x+122, y+70, (onoff & OO_VTOL ? "HOVER" : "WING"), HUDColors[onoff & OO_VTOL ? 1 : cg.MFDColor], 0);
+		}
 		CG_DrawString_MFQ3( x+4, y+60, "AUTOPILOT:", HUDColors[cg.MFDColor], 0);
 		CG_DrawString_MFQ3_R( x+122, y+60, "O/S", HUDColors[cg.MFDColor], 0);
 		CG_DrawString_MFQ3( x+4, y+80, "FUEL:", HUDColors[cg.MFDColor], 0);
@@ -1848,13 +1852,19 @@ void CG_DrawStatusBar_MFQ3_new( void ) {
 			CG_Draw_Coords( value, value2 );
 		}
 		
-		// stallwarning
+		// stallwarning (suppressed in VTOL/hover mode - low speed is normal there)
 		if( (ps->speed/10 <= availableVehicles[vehicle].stallspeed*1.5 || (cent->currentState.ONOFF & OO_STALLED)) &&
-			!(cent->currentState.ONOFF & OO_LANDED) && ps->stats[STAT_HEALTH] > 0 && 
+			!(cent->currentState.ONOFF & OO_LANDED) && ps->stats[STAT_HEALTH] > 0 &&
+			!(cent->currentState.ONOFF & OO_VTOL) &&
 			availableVehicles[vehicle].cat != CAT_HELO) {
 			float stallscale = 1.0f;
 			if( speed >= stallspeed && !(cent->currentState.ONOFF & OO_STALLED) ) stallscale = 2.0f - ((float)speed/(float)stallspeed);
 			cgUtils.drawStringNew( 320, 360, stallscale, HUDColors[stallcolor], "STALL!", 0, 0, 3, CENTRE_JUSTIFY );
+		}
+
+		// VTOL mode indicator (F-35B / Harrier in hover mode)
+		if( cent->currentState.ONOFF & OO_VTOL ) {
+			cgUtils.drawStringNew( 320, 400, 1.0f, HUDColors[HUD_GREEN], "VTOL", 0, 0, 3, CENTRE_JUSTIFY );
 		}
 
 		// lock warning
