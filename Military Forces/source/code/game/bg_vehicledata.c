@@ -202,7 +202,7 @@ completeVehicleData_t availableVehicles[] =
 	-1,							// trackcone ground
 	0,							// swingangle
 	1400,						// geartime
-	47,							// max gear frame
+	0,							// max gear frame
 	1000,						// baytime
 	0,							// max bay frame
 	0,							// renderflags
