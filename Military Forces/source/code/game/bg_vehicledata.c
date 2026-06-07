@@ -162,6 +162,54 @@ completeVehicleData_t availableVehicles[] =
 	{0,0,0,0}					// shadow orientation adjusters
     },
 
+    {	"C-5 Galaxy",				// descriptiveName
+	"C-5",						// tinyName
+	"c5",						// modelName
+	SHADOW_DEFAULT,				// alpha shadow
+	MF_GAMESET_MODERN,			// id
+	MF_TEAM_1|MF_TEAM_2,		// both teams
+	CAT_PLANE,
+	CLASS_PLANE_TRANSPORT,		// transport (shows under the new Plane->Transport tab)
+	0,							// flags
+	HC_GEAR,					// capabilities
+	{0,0,0,0,0,0,0,0,0,0},		// handles - SET AUTOMATICALLY
+	{0, 0, 0},					// mins (bounding box) - SET AUTOMATICALLY
+	{0, 0, 0},					// max (bounding box) - SET AUTOMATICALLY
+	{40, 30, 110},				// turnspeed around the three axis (sluggish transport)
+	{0, 700, 400},				// camera distance {min,max,default} (it's huge)
+	{0, 400, 120},				// camera height {min,max,default}
+	150,						// stallspeed
+	600,						// maxspeed
+	0,							// min throttle
+	15,							// max throttle
+	4,							// engines
+	0,							// wheels
+	0,							// wheel circumference
+	100,						// acceleration
+	600,						// health
+	{40.0f, 0.0f, 0.0f},		// gun tag
+	200,						// max fuel
+	0,							// gearheight - SET AUTOMATICALLY
+	0,							// tailangle
+	WI_FLARE, 0, 0, 0, 0, 0, 0, 0,	// weapons (transport - flares only)
+	30, 0, 0, 0, 0, 0, 0, 0,		// ammo
+	0,0,0,0,0,0,0,0,			// turret
+	{40, 0, 15},				// cameraposition for cockpit view
+	AB_BALL,					// effect model
+	12000,						// radar range
+	9000,						// radar range ground
+	0,							// trackcone
+	-1,							// trackcone ground
+	0,							// swingangle
+	1400,						// geartime
+	0,							// max gear frame
+	1000,						// baytime
+	0,							// max bay frame
+	0,							// renderflags
+	{4,0,34,24},				// shadow coordinates
+	{0,0,0,0}					// shadow orientation adjusters
+    },
+
     {	"F-16 Falcon (AG - MK82)",	    // descriptiveName
 	"F-16",						// tinyName
 	"f-16",						// modelName
@@ -1722,7 +1770,7 @@ completeVehicleData_t availableVehicles[] =
 	"f-22",						// modelName
 	SHADOW_DEFAULT,				// alpha shadow
 	MF_GAMESET_MODERN,			// id
-	MF_TEAM_1,
+	MF_TEAM_1|MF_TEAM_2,		// both teams
 	CAT_PLANE,
 	CLASS_PLANE_FIGHTER,
 	0,							// flags
@@ -3719,7 +3767,7 @@ const char *class_items[MF_MAX_CATEGORIES][MF_MAX_CLASSES+1] =
 	{
 		"Fighter",
 		"Bomber",
-		0,
+		"Transport",
 		0,
 		0,
 		0,
