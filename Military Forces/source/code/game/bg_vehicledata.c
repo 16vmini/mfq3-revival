@@ -3451,7 +3451,7 @@ completeVehicleData_t availableVehicles[] =
 	CAT_PLANE,
 	CLASS_PLANE_FIGHTER,		// fast recon / interceptor
 	0,							// flags
-	HC_SPEEDBRAKE|HC_VAPOR,		// capabilities (gear is static in this model)
+	HC_GEAR|HC_SPEEDBRAKE|HC_VAPOR,		// capabilities (animated gear)
 	{0,0,0,0,0,0,0,0,0,0},		// handles - SET AUTOMATICALLY
 	{0, 0, 0},					// mins (bounding box) - SET AUTOMATICALLY
 	{0, 0, 0},					// max (bounding box) - SET AUTOMATICALLY
@@ -3482,7 +3482,7 @@ completeVehicleData_t availableVehicles[] =
 	-1,							// trackcone ground
 	0,							// swingangle
 	1400,						// geartime
-	0,							// max gear frame
+	47,							// max gear frame (48-frame retract)
 	1000,						// baytime
 	0,							// max bay frame
 	0,							// renderflags
