@@ -13,6 +13,8 @@ param(
   [single]$TargetSize = 140,
   [int]$MaxVerts = 8000,
   [single]$Yaw = 180,            # yaw (deg about vertical) after Y-up->Z-up; 180 fits the Reaper OBJ, 0 for these glTF-sourced models
+  [single]$Pitch = 0,            # pitch (deg about left-right Y) after yaw; nulls a baked-in nose up/down tilt
+  [single]$Roll  = 0,            # roll (deg about forward X) after pitch; nulls a baked-in wing tilt (use analyze_obj.py)
   [bool]$FlipV = $true,          # flip texture V (1-v): true for OBJ (bottom-left origin), false for glTF-sourced (top-left)
   [switch]$PerMaterial,          # emit one MD3 surface per OBJ material (usemtl), each shader = <MtlDir>/<material>
   [string]$MtlDir = '',          # shader dir prefix for per-material shaders; default = directory part of ShaderName
@@ -43,6 +45,10 @@ $ErrorActionPreference = 'Stop'
 $ci = [System.Globalization.CultureInfo]::InvariantCulture
 $yawRad = $Yaw * [Math]::PI / 180.0
 $yawC = [Math]::Cos($yawRad); $yawS = [Math]::Sin($yawRad)
+$pitchRad = $Pitch * [Math]::PI / 180.0
+$pC = [Math]::Cos($pitchRad); $pS = [Math]::Sin($pitchRad)
+$rollRad = $Roll * [Math]::PI / 180.0
+$rC = [Math]::Cos($rollRad); $rS = [Math]::Sin($rollRad)
 
 $px=[System.Collections.Generic.List[double]]::new(); $py=[System.Collections.Generic.List[double]]::new(); $pz=[System.Collections.Generic.List[double]]::new()
 $tu=[System.Collections.Generic.List[double]]::new(); $tv=[System.Collections.Generic.List[double]]::new()
@@ -65,11 +71,13 @@ function Get-Vert([string]$key) {
   $ni = if ($parts.Length -ge 3 -and $parts[2] -ne '') { [int]$parts[2] } else { 0 }
   if ($vi -lt 0) { $vi = $px.Count + 1 + $vi }
   $ox=$px[$vi-1]; $oy=$py[$vi-1]; $oz=$pz[$vi-1]
-  # Y-up -> Z-up base, then yaw about vertical (Z) by $Yaw deg
+  # Y-up -> Z-up base, then yaw(Z) -> pitch(Y) -> roll(X) (matches analyze_obj.py)
   $bx=$ox; $by=-$oz; $bz=$oy
-  $gx.Add($bx*$yawC - $by*$yawS); $gy.Add($bx*$yawS + $by*$yawC); $gz.Add($bz)
+  $yx=$bx*$yawC - $by*$yawS; $yy=$bx*$yawS + $by*$yawC; $yz=$bz
+  $qx=$yx*$pC + $yz*$pS; $qy=$yy; $qz=-$yx*$pS + $yz*$pC
+  $gx.Add($qx); $gy.Add($qy*$rC + $qz*$rS); $gz.Add(-$qy*$rS + $qz*$rC)
   if ($ti -gt 0) { $gu.Add($tu[$ti-1]); $gv.Add( $(if($FlipV){ 1.0 - $tv[$ti-1] } else { $tv[$ti-1] }) ) } else { $gu.Add(0.0); $gv.Add(0.0) }
-  if ($ni -gt 0) { $bnx=$nx[$ni-1]; $bny=-$nz[$ni-1]; $bnz=$ny[$ni-1]; $gnx.Add($bnx*$yawC-$bny*$yawS); $gny.Add($bnx*$yawS+$bny*$yawC); $gnz.Add($bnz) } else { $gnx.Add(0.0); $gny.Add(0.0); $gnz.Add(1.0) }
+  if ($ni -gt 0) { $bnx=$nx[$ni-1]; $bny=-$nz[$ni-1]; $bnz=$ny[$ni-1]; $ynx=$bnx*$yawC-$bny*$yawS; $yny=$bnx*$yawS+$bny*$yawC; $ynz=$bnz; $qnx=$ynx*$pC+$ynz*$pS; $qny=$yny; $qnz=-$ynx*$pS+$ynz*$pC; $gnx.Add($qnx); $gny.Add($qny*$rC+$qnz*$rS); $gnz.Add(-$qny*$rS+$qnz*$rC) } else { $gnx.Add(0.0); $gny.Add(0.0); $gnz.Add(1.0) }
   $id = $gx.Count - 1
   $vmap[$key] = $id
   return $id
