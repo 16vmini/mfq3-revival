@@ -592,3 +592,170 @@ bool	PM_SlideMove_Boat() {
 }
 
 */
+
+
+/*
+===================
+PM_SubMove
+
+Submarine movement. Like the boat on the surface, but with depth control:
+  forward/back = throttle (reuses PM_BoatAccelerate)
+  left/right   = rudder (turn the hull)
+  +moveup      = surface     (jump)
+  +movedown    = dive        (crouch)
+  neutral      = hold depth  (neutral buoyancy, no gravity)
+The hull is clamped between the seabed (solid) and the water surface, so it
+can submerge and resurface but never fly out of the water. The deck-gun turret
+tracks the camera exactly like the boat's.
+===================
+*/
+#define	SUB_VSPEED	80.0f		// dive / surface rate (units/sec) - tune to taste
+
+bool PM_SlideMove_Sub();
+
+void PM_SubMove( void )
+{
+	vec3_t		viewdir, vehdir, turretdir, diff, turnspeed;
+	vec3_t		forward, up, temp;
+	bool		dead = (pm->ps->stats[STAT_HEALTH] <= 0);
+	int			i;
+	float		smove = pm->cmd.rightmove;
+	float		turret_yaw = pm->ps->turretAngle;
+	float		gun_pitch = pm->ps->gunAngle;
+	float		speed;
+	float		climb;
+
+	// keep the throttle accelerator on its "operational" path (not the boat's
+	// fall-through branch) whether we are surfaced or submerged
+	pm->ps->ONOFF |= OO_LANDED;
+
+	// forward speed from throttle (reuse the boat accelerator)
+	PM_BoatAccelerate();
+	speed = (float)pm->ps->speed / 10;
+
+	// horizontal heading (yaw only - the hull stays level)
+	VectorCopy( pm->ps->vehicleAngles, vehdir );
+	vehdir[0] = 0;	// no pitch
+	vehdir[2] = 0;	// no roll
+	AngleVectors( vehdir, forward, NULL, NULL );
+	VectorScale( forward, speed, pm->ps->velocity );
+
+	// depth control: jump = surface, crouch = dive, neutral = hold depth
+	if( pm->cmd.upmove > 0 )			climb = SUB_VSPEED;
+	else if( pm->cmd.upmove < 0 )		climb = -SUB_VSPEED;
+	else								climb = 0;
+	pm->ps->velocity[2] = climb;
+
+	// move (3D, clamped to the water column)
+	PM_SlideMove_Sub();
+
+	// turn rates
+	for( i = HULL_YAW; i <= GUN_PITCH; i++ )
+		turnspeed[i] = availableVehicles[pm->vehicle].turnspeed[i] * pml.frametime;
+
+	// turn the hull with the rudder
+	VectorCopy( pm->ps->vehicleAngles, vehdir );
+	if( smove > 0 )			vehdir[YAW] -= turnspeed[HULL_YAW];
+	else if( smove < 0 )		vehdir[YAW] += turnspeed[HULL_YAW];
+
+	// deck-gun turret follows the camera (same maths as the boat)
+	AngleVectors( pm->ps->vehicleAngles, forward, 0, up );
+	RotatePointAroundVector( temp, up, forward, turret_yaw );
+	vectoangles( temp, turretdir );
+	turretdir[PITCH] += gun_pitch;
+
+	VectorCopy( pm->ps->viewangles, viewdir );
+	viewdir[YAW]    = AngleMod( viewdir[YAW] );
+	vehdir[YAW]     = AngleMod( vehdir[YAW] );
+	turretdir[YAW]  = AngleMod( turretdir[YAW] );
+	viewdir[PITCH]  = AngleMod( viewdir[PITCH] );
+	turretdir[PITCH]= AngleMod( turretdir[PITCH] );
+
+	if( !(pm->cmd.buttons & BUTTON_FREELOOK) && !dead ) {
+		float min, max;
+		for( i = PITCH; i <= YAW; i++ ) {
+			diff[i] = viewdir[i] - turretdir[i];
+			if( diff[i] > 180 ) diff[i] -= 360;
+			else if( diff[i] < -180 ) diff[i] += 360;
+		}
+		// turret yaw
+		if( diff[YAW] < -turnspeed[TURRET_YAW] ) turret_yaw -= turnspeed[TURRET_YAW];
+		else if( diff[YAW] > turnspeed[TURRET_YAW] ) turret_yaw += turnspeed[TURRET_YAW];
+		else turret_yaw += diff[YAW];
+		if( turret_yaw > 180 ) turret_yaw -= 360;
+		min = availableWeapons[pm->ps->weaponIndex].minturns[1];
+		max = availableWeapons[pm->ps->weaponIndex].maxturns[1];
+		if( max > min ) {
+			if( turret_yaw > max ) turret_yaw = max;
+			else if( turret_yaw < min ) turret_yaw = min;
+		}
+		if( turret_yaw < 0 ) turret_yaw += 360;
+		else if( turret_yaw > 360 ) turret_yaw -= 360;
+		// gun pitch
+		if( diff[PITCH] < -turnspeed[GUN_PITCH] ) gun_pitch -= turnspeed[GUN_PITCH];
+		else if( diff[PITCH] > turnspeed[GUN_PITCH] ) gun_pitch += turnspeed[GUN_PITCH];
+		else gun_pitch += diff[PITCH];
+		min = availableWeapons[pm->ps->weaponIndex].minturns[0];
+		max = availableWeapons[pm->ps->weaponIndex].maxturns[0];
+		if( gun_pitch > 180 ) gun_pitch -= 360;
+		if( gun_pitch > max ) gun_pitch = max;
+		else if( gun_pitch < min ) gun_pitch = min;
+		if( gun_pitch < 0 ) gun_pitch += 360;
+		else if( gun_pitch > 360 ) gun_pitch -= 360;
+	}
+
+	// write back
+	VectorCopy( vehdir, pm->ps->vehicleAngles );
+	pm->ps->turretAngle = turret_yaw;
+	pm->ps->gunAngle = gun_pitch;
+}
+
+/*
+==================
+PM_SlideMove_Sub
+
+3D underwater move: advance by velocity, collide with solids (seabed, walls,
+piers), but never rise above the water surface. Reuses PM_AddTouchEnt_Boat
+(now world/none-safe) for contact.
+==================
+*/
+bool PM_SlideMove_Sub()
+{
+	vec3_t		end, from, down;
+	trace_t		trace;
+	float		surfaceZ;
+	float		time_left = pml.frametime;
+	bool		clipped = false;
+
+	// find the water surface above us (trace down through the water column)
+	VectorCopy( pm->ps->origin, from );
+	from[2] += 4000.0f;
+	VectorCopy( from, down );
+	down[2] -= 16000.0f;
+	pm->trace( &trace, from, NULL, NULL, down, pm->ps->clientNum, MASK_WATER, false );
+	surfaceZ = ( trace.fraction < 1.0f ) ? trace.endpos[2] : pm->ps->origin[2];
+
+	// where we want to go this frame
+	VectorMA( pm->ps->origin, time_left, pm->ps->velocity, end );
+
+	// never poke out above the surface (hull centre sits at the waterline when surfaced)
+	if( end[2] > surfaceZ ) {
+		end[2] = surfaceZ;
+		if( pm->ps->velocity[2] > 0 ) pm->ps->velocity[2] = 0;
+	}
+
+	// move with the hull bbox, colliding with solids
+	pm->trace( &trace, pm->ps->origin, pm->mins, pm->maxs, end, pm->ps->clientNum, pm->tracemask, false );
+	if( trace.allsolid ) {
+		pm->ps->velocity[2] = 0;	// trapped - bleed vertical, allow steering out
+		return true;
+	}
+	VectorCopy( trace.endpos, pm->ps->origin );
+	if( trace.fraction < 1.0f ) {
+		PM_ClipVelocity( pm->ps->velocity, trace.plane.normal, pm->ps->velocity, OVERCLIP );
+		PM_AddTouchEnt_Boat( trace.entityNum );
+		clipped = true;
+	}
+
+	return clipped;
+}

@@ -396,6 +396,17 @@ void MF_LoadAllVehicleData()
 		MF_getDimensions( name, 0, &availableVehicles[i].maxs, &availableVehicles[i].mins );
 		availableVehicles[i].mins[2] += 1;// to look better ?
 
+		// submarine: the real hull is very long; a full-length collision box
+		// wedges it in harbours so it can't translate. Keep the visual model
+		// full size but collide as a compact box (runs on server + client, so
+		// prediction stays consistent) - lets it move freely on/under water.
+		if( (availableVehicles[i].cat & CAT_BOAT) && (availableVehicles[i].cls & CLASS_BOAT_SUB) )
+		{
+			availableVehicles[i].mins[0] = -120;	availableVehicles[i].maxs[0] = 120;
+			availableVehicles[i].mins[1] = -64;		availableVehicles[i].maxs[1] = 64;
+			availableVehicles[i].mins[2] = -40;		availableVehicles[i].maxs[2] = 48;
+		}
+
 		// helo/plane specific
 		if(availableVehicles[i].cat & CAT_PLANE) 
 		{

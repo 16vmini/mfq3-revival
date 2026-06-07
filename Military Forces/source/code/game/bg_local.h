@@ -60,6 +60,7 @@ void PM_GroundVehicleMove( void );
 void PM_HeloMove( void );
 void PM_LQMMove( void );
 void PM_BoatMove( void );
+void PM_SubMove( void );
 
 bool	PM_SlideMove( bool gravity );
 void		PM_StepSlideMove( bool gravity );

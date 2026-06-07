@@ -640,10 +640,11 @@ bool	BG_PlayerTouchesItem( playerState_t *ps, entityState_t *item, int atTime );
 #define CLASS_LQM_INFANTRY			  0x0002
 #define CLASS_LQM_MAX				  0x0002 
 
-// boat classes					
-#define	CLASS_BOAT_PATROL			  0x0001 
-#define	CLASS_BOAT_TRANSPORT		  0x0002 
-#define	CLASS_BOAT_MAX				  0x0002
+// boat classes
+#define	CLASS_BOAT_PATROL			  0x0001
+#define	CLASS_BOAT_TRANSPORT		  0x0002
+#define	CLASS_BOAT_SUB				  0x0004	// submarine: dives (PM_SubMove)
+#define	CLASS_BOAT_MAX				  0x0004
 
 // strings for categories and classes etc..
 extern const char *gameset_items[MF_MAX_GAMESETS+1];

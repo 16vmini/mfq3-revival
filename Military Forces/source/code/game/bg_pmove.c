@@ -860,9 +860,12 @@ static void PM_VehicleMove( void )
 	{
 		PM_LQMMove();
 	}
-	else if( availableVehicles[pm->vehicle].cat & CAT_BOAT ) 
+	else if( availableVehicles[pm->vehicle].cat & CAT_BOAT )
 	{
-		PM_BoatMove();
+		if( availableVehicles[pm->vehicle].cls & CLASS_BOAT_SUB )
+			PM_SubMove();
+		else
+			PM_BoatMove();
 	}
 	else if( availableVehicles[pm->vehicle].cat & CAT_GROUND ) 
 	{
