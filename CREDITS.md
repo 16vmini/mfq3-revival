@@ -13,6 +13,13 @@ Record EVERY downloaded asset here: name, author, source URL, license, date.
 | **MQ-9 Reaper** | _TO CONFIRM_ | _TO CONFIRM_ (downloaded OBJ) | _TO CONFIRM_ | `uploads_files_800272_MQ-9.obj` + Textures.zip | Converted to the in-game Reaper (spinning prop + retract gear). **Please confirm the download page/author/license.** |
 | **B-52 Stratofortress** (planned) | bohmerang | https://sketchfab.com/3d-models/boeing-b-52-stratofortress-38b0c64bd552431394efa8625d7f5144 | CC-BY 4.0 | (pending download) | Bomber class. |
 
+## Naval models
+
+| Vehicle | Author | Source | License | File | Notes |
+|---------|--------|--------|---------|------|-------|
+| **Submarine — "Red October"** (Typhoon-class) | DigitalGreaseMonkey | https://sketchfab.com/3d-models/red-october-0bdbd4ce120c4440ba2a343572b7bf7a | CC-BY 4.0 | `red_october.glb` → `models/vehicles/sea/warsub` | Player submarine. glTF→MD3 via `tools/glb_to_md3.py`, rescaled to ~1000u, Y-up→Z-up, bow +X. Texture = model albedo. |
+| **Waypoint markers** (gate ring / flag / buoy) | "Uncle Mark's" model bot (commissioned) | custom for this project | project-owned | `models/mapobjects/waypoints`, `.../gate` | Mission course markers + the earlier 6-part warsub rig (now replaced by Red October). |
+
 ## Notes
 - Existing original MFQ3 content (F-16, GR-7 Harrier, Hind, etc.) is from the
   original mod team and is not listed here.
