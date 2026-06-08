@@ -4,7 +4,7 @@
 Overview
 {
 	map	mfq3_norway
-	gameset	1
+	gameset	2
 	gametype	0
 	mission	"SR-71 Takeoff"
 	goal	TakeOff
@@ -18,7 +18,7 @@ Entities
 {
 	PlayerStart
 	{
-		Index	61
+		Index	62
 		Origin	-5700.8;5772.9;500.0
 		Angles	0.0;-87.6;0.0
 		Speed	0

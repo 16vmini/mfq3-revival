@@ -50,4 +50,5 @@ def main():
     frames[0].save(out,save_all=True,append_images=frames[1:],duration=110,loop=0,optimize=True)
     print("wrote",out,len(frames),"frames")
 
-main()
+if __name__=='__main__':
+    main()

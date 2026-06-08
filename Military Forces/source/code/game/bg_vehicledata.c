@@ -78,17 +78,17 @@ completeVehicleData_t availableVehicles[] =
 	{0,0,0,0,0,0,0,0,0,0},		// handles - SET AUTOMATICALLY
 	{0, 0, 0},					// mins (bounding box) - SET AUTOMATICALLY
 	{0, 0, 0},					// max (bounding box) - SET AUTOMATICALLY
-	{85, 60, 280},				// turnspeed around the three axis
+	{40, 35, 110},				// turnspeed around the three axis
 	{0, 100, 70},				// camera distance {min,max,default}
 	{0, 100, 20},				// camera height {min,max,default}
-	200,						// stallspeed
-	700,						// maxspeed
+	70,						// stallspeed
+	300,						// maxspeed
 	0,							// min throttle
 	15,							// max throttle
 	1,							// engines
 	0,							// wheels
 	0,							// wheel circumference
-	260,						// acceleration
+	60,						// acceleration
 	120,						// health
 	{16.65f, -3.391f, 0.378f},	// gun tag
 	60,							// max fuel
@@ -3455,20 +3455,20 @@ completeVehicleData_t availableVehicles[] =
 	{0,0,0,0,0,0,0,0,0,0},		// handles - SET AUTOMATICALLY
 	{0, 0, 0},					// mins (bounding box) - SET AUTOMATICALLY
 	{0, 0, 0},					// max (bounding box) - SET AUTOMATICALLY
-	{55, 45, 200},				// turnspeed (big jet, not nimble)
+	{50, 40, 170},				// turnspeed (big jet, not nimble)
 	{0, 160, 110},				// camera distance {min,max,default}
 	{0, 120, 35},				// camera height {min,max,default}
-	220,						// stallspeed (fast)
-	1200,						// maxspeed (Mach 3 - fastest in game)
+	300,						// stallspeed (fast)
+	1500,						// maxspeed (Mach 3 - fastest in game)
 	0,							// min throttle
-	20,							// max throttle
+	15,							// max throttle
 	2,							// engines
 	0,							// wheels
 	0,							// wheel circumference
-	220,						// acceleration
+	340,						// acceleration
 	150,						// health
 	{30.0f, 0.0f, 0.0f},		// gun tag
-	120,						// max fuel
+	90,						// max fuel
 	0,							// gearheight - SET AUTOMATICALLY
 	0,							// tailangle
 	WI_MG_20MM, WI_AMRAAM, WI_SIDEWINDER, WI_MK82, WI_CM, 0, 0, WI_FLARE,	// weapons
