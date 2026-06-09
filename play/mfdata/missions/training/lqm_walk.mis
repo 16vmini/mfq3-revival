@@ -1,0 +1,30 @@
+// MFQ3 - North-star "Mission 1", step 1: a little person on the runway.
+// Spawns the Sarge LQM (index 59) on the Norway airstrip. Just walk around.
+// Next steps later: walk to a parked plane -> get in -> fly -> mission complete.
+Overview
+{
+	map	mfq3_norway
+	gameset	2
+	gametype	0
+	mission	"Boots on the Ground"
+	goal	TakeOff
+	order	14
+	description	"A soldier on the Norway airstrip. First steps of Mission 1."
+	briefing	"You're on foot on the Norway strip. Have a walk around - get a feel for the little person. (Step 1 of the grand plan: next he walks to a plane and gets in.)"
+	success	"Good wander."
+	failure	"You died. On a runway. Walking."
+}
+Entities
+{
+	PlayerStart
+	{
+		Index	59
+		Origin	-5700.8;5772.9;500.0
+		Angles	0.0;-87.6;0.0
+		Speed	0
+	}
+}
+Objectives
+{
+	Objective { Type altitude  Op >  Value 10000  Text "Free roam - just walk (objective is decorative)" }
+}

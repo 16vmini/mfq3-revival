@@ -178,9 +178,9 @@ void CG_NewClientInfo( int clientNum ) {
 	{
 		bool isLocalPlayer = ( clientNum == cg.clientNum ) ||
 			( clientNum == cg.predictedPlayerEntity.currentState.clientNum );
-		bool isLQM = ( newInfo.vehicle >= 0 ) &&
-			( availableVehicles[newInfo.vehicle].cat & CAT_LQM );
-		if( newInfo.vehicle >= 0 && isLocalPlayer && !isLQM )
+		// (LQM was excluded here while infantry was unspawnable; now it syncs too,
+		// otherwise cg_vehicle stays -1 and the Limbo overlay never clears)
+		if( newInfo.vehicle >= 0 && isLocalPlayer )
 		{
 			Cvar_Set( "cg_vehicle", va( "%d", newInfo.vehicle ) );
 			// only set "cg_nextvehicle" to the same as "cg_vehicle" when we currently don't have

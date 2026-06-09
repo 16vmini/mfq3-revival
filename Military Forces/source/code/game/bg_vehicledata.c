@@ -3248,8 +3248,8 @@ completeVehicleData_t availableVehicles[] =
 	"Soldier",					// tinyName
 	"sarge",					// modelName
 	SHADOW_DEFAULT,				// alpha shadow
-	MF_GAMESET_MODERN,			// id
-	MF_TEAM_2,
+	MF_GAMESET_MODERN|MF_GAMESET_WW2|MF_GAMESET_WW1|MF_GAMESET_COLD_WAR,			// id
+	MF_TEAM_1|MF_TEAM_2,
 	CAT_LQM,
 	CLASS_LQM_INFANTRY,
 	0,							// flags
@@ -3269,7 +3269,7 @@ completeVehicleData_t availableVehicles[] =
 	0,							// wheel circumference
 	0,							// acceleration
 	20,							// health
-	{0, 0, 0},					// gun tag
+	{2.0f, 0, 4.2f},					// gun tag (shoulder height - was 0,0,0 = firing from the feet)
 	0,							// max fuel
 	0,							// max gun pitch (upwards = negative) <- gearheight
 	0,							// min gun pitch (downwards = positive) <- tailangle
