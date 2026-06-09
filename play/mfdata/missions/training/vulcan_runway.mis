@@ -1,0 +1,30 @@
+// MFQ3 - Avro Vulcan takeoff (Cold War, gameset 8)
+// Spawns the Vulcan on the Norway strip, gear down. Throttle up and watch the
+// nose gear + two 8-wheel main bogies retract. Cold War bomber.
+Overview
+{
+	map	mfq3_norway
+	gameset	8
+	gametype	0
+	mission	"Vulcan Takeoff"
+	goal	TakeOff
+	order	13
+	description	"An Avro Vulcan on the Norway strip - the Cold War V-bomber."
+	briefing	"You're in an Avro Vulcan, gear down on the strip. Throttle up, rotate, and watch the big delta's gear fold up. (Cold War, NATO vs Warsaw Pact.)"
+	success	"Airborne - gear up, the white delta climbs out."
+	failure	"Down. Reset and try again."
+}
+Entities
+{
+	PlayerStart
+	{
+		Index	63
+		Origin	-5700.8;5772.9;500.0
+		Angles	0.0;-87.6;0.0
+		Speed	0
+	}
+}
+Objectives
+{
+	Objective { Type altitude  Op >  Value 500  Text "Climb to 500 ft" }
+}

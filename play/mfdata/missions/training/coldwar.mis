@@ -1,0 +1,30 @@
+// MFQ3 - Cold War game mode (gameset 8 = MF_GAMESET_COLD_WAR)
+// Drops you into a Cold War level: only Cold-War-tagged vehicles are selectable
+// (SR-71, Mi-24 Hind, + Avro Vulcan / B-52 as they're added). NATO vs Warsaw Pact.
+Overview
+{
+	map	mfq3_norway
+	gameset	8
+	gametype	0
+	mission	"Cold War Skies"
+	goal	TakeOff
+	order	12
+	description	"Cold War over Norway - take the SR-71 up, switch between Cold-War aircraft."
+	briefing	"Welcome to the Cold War. You're in an SR-71 on the strip; only Cold-War aircraft are available. Throttle up and fly. (NATO vs Warsaw Pact.)"
+	success	"Airborne."
+	failure	"Down. Reset and try again."
+}
+Entities
+{
+	PlayerStart
+	{
+		Index	62
+		Origin	-5700.8;5772.9;500.0
+		Angles	0.0;-87.6;0.0
+		Speed	0
+	}
+}
+Objectives
+{
+	Objective { Type altitude  Op >  Value 500  Text "Climb to 500 ft" }
+}

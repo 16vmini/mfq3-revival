@@ -593,7 +593,8 @@ bool	BG_PlayerTouchesItem( playerState_t *ps, entityState_t *item, int atTime );
 #define	MF_GAMESET_MODERN			  0x0001 
 #define	MF_GAMESET_WW2				  0x0002 
 #define	MF_GAMESET_WW1				  0x0004 
-#define	MF_GAMESET_MAX				  0x0004 
+#define	MF_GAMESET_COLD_WAR			  0x0008 
+#define	MF_GAMESET_MAX				  0x0008 
 #define	MF_GAMESET_ANY				  0xFFFF
 
 #define	MF_TEAM_MIN					  0x0001

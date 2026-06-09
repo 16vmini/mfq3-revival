@@ -89,6 +89,10 @@ unsigned long MF_UI_Gameset_StringToValue( char * pString, bool asEnum )
 	{
 		returnValue = MF_GAMESET_MODERN;
 	}
+	else if( Q_stricmp( pString, "coldwar" ) == 0 )
+	{
+		returnValue = MF_GAMESET_COLD_WAR;
+	}
 
 	// convert to enum?
 	if( asEnum )
@@ -103,6 +107,9 @@ unsigned long MF_UI_Gameset_StringToValue( char * pString, bool asEnum )
 			break;
 		case MF_GAMESET_MODERN:
 			returnValue = 0;
+			break;
+		case MF_GAMESET_COLD_WAR:
+			returnValue = 3;
 			break;
 		}
 	}

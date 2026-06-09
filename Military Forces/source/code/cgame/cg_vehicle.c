@@ -563,10 +563,14 @@ CG_CacheVehicles
 void CG_CacheVehicles()
 {
 	int i;
-	
+	int cached = 0;
+
+	Com_Printf( "CG_CacheVehicles: cgs.gameset=0x%02x - caching matching vehicle models\n", cgs.gameset );
+
 	for( i = 0; i < bg_numberOfVehicles; i++ )
 	{
 		if( (availableVehicles[i].gameset & cgs.gameset) || (availableVehicles[i].cat & CAT_LQM) ) {	// MFQ3: always cache infantry (gameset-independent)
+			cached++;
 			CG_LoadingString(availableVehicles[i].descriptiveName);
 			if( availableVehicles[i].cat & CAT_PLANE ) {
 					CG_CachePlane(i);
@@ -584,11 +588,12 @@ void CG_CacheVehicles()
 					CG_CacheBoat(i);
 			}
 			else {
-				Com_Error( ERR_DROP, "Invalid Vehicle type in CG_CacheVehicles (%d,%d)", 
+				Com_Error( ERR_DROP, "Invalid Vehicle type in CG_CacheVehicles (%d,%d)",
 					i, availableVehicles[i].cat );
 			}
 		}
 	}
+	Com_Printf( "CG_CacheVehicles: cached %d of %d vehicles for gameset 0x%02x\n", cached, bg_numberOfVehicles, cgs.gameset );
 	for( i = 0; i < bg_numberOfGroundInstallations; i++ ) {
 		if( availableGroundInstallations[i].gameset & cgs.gameset ) {
 			CG_LoadingString(availableGroundInstallations[i].descriptiveName);

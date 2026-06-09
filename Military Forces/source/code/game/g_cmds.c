@@ -1212,7 +1212,7 @@ void Cmd_CallVote_f( GameEntity *ent )
 	else if( !(Q_stricmp( arg1, "mf_gameset") ) ) 
 	{
 		if( Q_stricmp( arg2, "modern" ) != 0 && Q_stricmp( arg2, "ww2" ) != 0 &&
-			Q_stricmp( arg2, "ww1" ) != 0 ) {
+			Q_stricmp( arg2, "ww1" ) != 0 && Q_stricmp( arg2, "coldwar" ) != 0 ) {
 			return;
 		}
 		Com_sprintf( theLevel.voteString_, sizeof( theLevel.voteString_ ), "%s \"%s\"", arg1, arg2 );

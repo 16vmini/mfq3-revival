@@ -129,8 +129,9 @@ void CG_ParseServerinfo( void ) {
 	if( strcmp( gs, "modern" ) == 0 ) newset = MF_GAMESET_MODERN;
 	else if( strcmp( gs, "ww2" ) == 0 ) newset = MF_GAMESET_WW2;
 	else if( strcmp( gs, "ww1" ) == 0 ) newset = MF_GAMESET_WW1;
+	else if( strcmp( gs, "coldwar" ) == 0 ) newset = MF_GAMESET_COLD_WAR;
 	else newset = MF_GAMESET_MODERN;
-	Com_Printf("The gameset is '%s'\n", gs);
+	Com_Printf("The gameset is '%s' (mask 0x%02x)\n", gs, newset);
 
 	// gameset changed>
 	if( cgs.gameset && newset != cgs.gameset )

@@ -32,6 +32,7 @@ param(
   [single]$GearFoldDeg = -85,    # default sweep (about Y) if -GearFold not given; +=aft, -=fwd
   [string]$GearFold    = '',     # per-leg sweep deg, ';'-sep (e.g. "90;90;-45"); blank = GearFoldDeg for all
   [string]$GearRoll    = '',      # per-leg roll-about-strut deg, ';'-sep (e.g. "90;-90;0"); blank = 0
+  [string]$GearHinge   = '',     # per-leg explicit hinge "x,y,z" in body-local SCALED coords (blank leg = auto)
   # animated VTOL part (doors/nozzle) - SAME frame-rotation system as gear, output as a
   # second md3 attached at its own tag. Each "leg" is a door/nozzle group(s) that rotates.
   [string]$VtolLegs    = '',     # legs ';'-sep, groups within a leg ','-sep
@@ -439,10 +440,17 @@ for($p=0;$p -lt $PartName.Count;$p++){
 # ---- gear: multi-frame fold animation, attached at tag_gear (body origin) ----
 if($numLegs -gt 0 -and $gearTris.Count -gt 0 -and $GearOut -ne ''){
   $legHinge=@()
+  $ghingeArr=$GearHinge.Split(';')
   for($l=0;$l -lt $numLegs;$l++){
     if($legTris[$l].Count -eq 0){ Write-Output "WARN: gear leg $l matched 0 tris"; $legHinge += ,([double[]]@($cx,$cy,$cz)); continue }
-    $h=Get-Hinge $legTris[$l]; $legHinge += ,$h
-    Write-Output ("gear leg {0}: {1} tris, hinge body-local ({2:N1},{3:N1},{4:N1})" -f $l,($legTris[$l].Count/3),(($h[0]-$cx)*$scale),(($h[1]-$cy)*$scale),(($h[2]-$cz)*$scale))
+    if($l -lt $ghingeArr.Count -and $ghingeArr[$l].Trim() -ne ''){
+      $hc=$ghingeArr[$l].Split(','); $hx=[double]$hc[0]/$scale+$cx; $hy=[double]$hc[1]/$scale+$cy; $hz=[double]$hc[2]/$scale+$cz
+      $h=([double[]]@($hx,$hy,$hz)); $legHinge += ,$h
+      Write-Output ("gear leg {0}: {1} tris, EXPLICIT hinge body-local ({2})" -f $l,($legTris[$l].Count/3),$ghingeArr[$l].Trim())
+    } else {
+      $h=Get-Hinge $legTris[$l]; $legHinge += ,$h
+      Write-Output ("gear leg {0}: {1} tris, auto hinge body-local ({2:N1},{3:N1},{4:N1})" -f $l,($legTris[$l].Count/3),(($h[0]-$cx)*$scale),(($h[1]-$cy)*$scale),(($h[2]-$cz)*$scale))
+    }
   }
   # per-leg sweep + roll (fall back to GearFoldDeg / 0)
   $foldArr=$GearFold.Split(';'); $rollArr=$GearRoll.Split(';')

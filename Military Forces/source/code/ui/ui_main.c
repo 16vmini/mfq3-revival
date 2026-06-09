@@ -67,7 +67,8 @@ static int const numTeamArenaGameTypes = sizeof(teamArenaGameTypes) / sizeof(con
 static const char *mfqGamesets[] = {	// make sure this matches exactly with gameset_items[] of bg_vehicledata.c
 	"MDRN",
 	"WW2",
-	"WW1"
+	"WW1",
+	"CW"
 };
 
 static int const numGamesets = sizeof(mfqGamesets) / sizeof(const char*);

@@ -3197,7 +3197,7 @@ completeVehicleData_t availableVehicles[] =
 	"Hind",						// tinyName
 	"hind",						// modelName
 	SHADOW_DEFAULT,				// alpha shadow
-	MF_GAMESET_MODERN,			// id
+	MF_GAMESET_MODERN|MF_GAMESET_COLD_WAR,			// id
 	MF_TEAM_1|MF_TEAM_2,		// both teams (so it's selectable regardless of side)
 	CAT_HELO,
 	CLASS_HELO_ATTACK,
@@ -3446,7 +3446,7 @@ completeVehicleData_t availableVehicles[] =
 	"SR-71",					// tinyName
 	"sr71",						// modelName
 	SHADOW_DEFAULT,				// alpha shadow
-	MF_GAMESET_MODERN,			// id
+	MF_GAMESET_MODERN|MF_GAMESET_COLD_WAR,			// id
 	MF_TEAM_1|MF_TEAM_2,		// both teams
 	CAT_PLANE,
 	CLASS_PLANE_FIGHTER,		// fast recon / interceptor
@@ -3482,6 +3482,54 @@ completeVehicleData_t availableVehicles[] =
 	-1,							// trackcone ground
 	0,							// swingangle
 	1400,						// geartime
+	47,							// max gear frame (48-frame retract)
+	1000,						// baytime
+	0,							// max bay frame
+	0,							// renderflags
+	{4,0,34,24},				// shadow coordinates
+	{0,0,0,0}					// shadow orientation adjusters
+    },
+
+    {	"Avro Vulcan",				// descriptiveName
+	"Vulcan",					// tinyName
+	"vulcan",					// modelName
+	SHADOW_DEFAULT,				// alpha shadow
+	MF_GAMESET_COLD_WAR,		// id (Cold War V-bomber)
+	MF_TEAM_1|MF_TEAM_2,		// both teams
+	CAT_PLANE,
+	CLASS_PLANE_BOMBER,			// bomber
+	0,							// flags
+	HC_GEAR|HC_SPEEDBRAKE,		// capabilities (animated gear)
+	{0,0,0,0,0,0,0,0,0,0},		// handles - SET AUTOMATICALLY
+	{0, 0, 0},					// mins (bounding box) - SET AUTOMATICALLY
+	{0, 0, 0},					// max (bounding box) - SET AUTOMATICALLY
+	{60, 50, 200},				// turnspeed (big delta bomber)
+	{0, 180, 130},				// camera distance {min,max,default}
+	{0, 130, 40},				// camera height {min,max,default}
+	170,						// stallspeed
+	650,						// maxspeed (fast for a bomber)
+	0,							// min throttle
+	15,							// max throttle
+	4,							// engines
+	0,							// wheels
+	0,							// wheel circumference
+	120,						// acceleration (heavy)
+	400,						// health
+	{40.0f, 0.0f, 0.0f},		// gun tag
+	200,						// max fuel
+	0,							// gearheight - SET AUTOMATICALLY
+	0,							// tailangle
+	WI_MK82, WI_CM, 0, 0, 0, 0, 0, WI_FLARE,	// weapons (bomber)
+	42, 4, 0, 0, 0, 0, 0, 30,	// ammo (21000lb of bombs)
+	0,0,0,0,0,0,0,0,			// turret
+	{30, 0, 12},				// cameraposition for cockpit view
+	AB_BALL,					// effect model
+	13000,						// radar range
+	9000,						// radar range ground
+	0,							// trackcone
+	-1,							// trackcone ground
+	0,							// swingangle
+	1600,						// geartime
 	47,							// max gear frame (48-frame retract)
 	1000,						// baytime
 	0,							// max bay frame
@@ -3653,7 +3701,7 @@ const char *gameset_items[MF_MAX_GAMESETS+1] =
 	"Modern",
 	"World War II",
 	"World War I",
-	0,
+	"Cold War",
 	0,
 	0,
 	0,
@@ -3666,7 +3714,7 @@ const char *gameset_codes[MF_MAX_GAMESETS+1] =
 	"modern",
 	"ww2",
 	"ww1",
-	0,
+	"coldwar",
 	0,
 	0,
 	0,
@@ -3715,10 +3763,10 @@ const char *team_items[MF_MAX_GAMESETS][MF_MAX_TEAMS+1] =
 		0
 	},
 
-	// free
+	// cold war
 	{
-		0,
-		0,
+		"NATO",
+		"Warsaw Pact",
 		0,
 		0,
 		0,
