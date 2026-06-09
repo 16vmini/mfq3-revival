@@ -3534,7 +3534,7 @@ completeVehicleData_t availableVehicles[] =
 	1000,						// baytime
 	0,							// max bay frame
 	0,							// renderflags
-	{4,0,34,24},				// shadow coordinates
+	{0,0,68,75},				// shadow coordinates
 	{0,0,0,0}					// shadow orientation adjusters
     }
 };
