@@ -938,6 +938,10 @@ void ClientThink_real( GameEntity *ent )
 
 	// perform once-a-second actions
 	ClientTimerActions( ent, msec );
+
+	// MFQ3 Mission 1: infantry can board a nearby parked vehicle (+button13).
+	// Runs last so a board-respawn doesn't fight this frame's pmove.
+	MF_CheckBoardVehicle( ent );
 }
 
 /*

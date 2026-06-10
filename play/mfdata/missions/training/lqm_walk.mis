@@ -23,6 +23,18 @@ Entities
 		Angles	0.0;-87.6;0.0
 		Speed	0
 	}
+	Vehicle
+	{
+		Index	0
+		Name	f16
+		Team	red
+		Behaviour	parked
+		Origin	-5690.0;5520.0;500.0
+		Angles	0.0;-87.6;0.0
+		Waypoints
+		{
+		}
+	}
 }
 Objectives
 {

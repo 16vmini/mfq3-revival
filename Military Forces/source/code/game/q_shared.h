@@ -1380,6 +1380,7 @@ struct ClientBase
 #define	BUTTON_ANY			2048			// any key whatsoever
 
 #define BUTTON_VTOL			4096		// MFQ3 VTOL mode toggle "+button12" (bit 12 < 16 networked; F-35B / Harrier)
+#define BUTTON_BOARD		8192		// MFQ3 infantry boards a parked vehicle "+button13" (bit 13)
 
 
 #define	MOVE_RUN			120			// if forwardmove or rightmove are >= MOVE_RUN,

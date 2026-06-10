@@ -783,6 +783,7 @@ typedef struct {
 char *MF_ClientConnect( int clientNum, bool firstTime, bool isBot );
 void MF_ClientBegin( int clientNum );
 void MF_ClientSpawn( int clientNum, long cs_flags, const spawnpoint_t *startOverride );
+void MF_CheckBoardVehicle( GameEntity *ent );	// LQM walk-up boarding (Mission 1)
 
 // mfq3
 // mf_vehiclespawn.c

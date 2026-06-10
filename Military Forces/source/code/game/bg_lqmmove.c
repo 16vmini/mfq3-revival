@@ -33,7 +33,10 @@ void PM_LQMGroundTrace( void )
 
 	// set the height
 
-	VectorSet( end, pm->ps->origin[0], (float)pm->ps->origin[1], (float)pm->ps->origin[2] + (float)pm->mins[2] + 2);
+	// sweep DOWN past the feet: with the scaled LQM bounds mins[2] is ~0, so the
+	// original "+ 2" pointed the trace UP - ground never found -> OO_STALLED stuck
+	// -> animation locked on the landing frame forever.
+	VectorSet( end, pm->ps->origin[0], (float)pm->ps->origin[1], (float)pm->ps->origin[2] + (float)pm->mins[2] - 2);
 
 	pm->trace (&trace, pm->ps->origin, pm->mins, pm->maxs, end, pm->ps->clientNum, MASK_SOLID, false);
 	pml.groundTrace = trace;
@@ -190,6 +193,9 @@ void PM_LQMMove( void )
 		VectorAdd(liftvel, deltavel, deltavel);
 		// Gravity
 		deltavel[2] = std::max(deltavel[2]-DEFAULT_GRAVITY*pml.frametime ,-DEFAULT_GRAVITY);
+		// MFQ3 parachute: infantry never freefalls - the chute caps the descent,
+		// so an ejecting pilot floats down (and survives the landing).
+		if( deltavel[2] < -45.0f ) deltavel[2] = -45.0f;
     }
 	// return angles
 	VectorCopy( viewdir, pm->ps->vehicleAngles );

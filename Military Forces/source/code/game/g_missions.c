@@ -348,7 +348,16 @@ void G_LoadMissionScripts()
 	{
 		if( !vehicles[i].used ) break;
 
-		if( availableVehicles[vehicles[i].index].cat & ( CAT_PLANE | CAT_HELO ) )
+		if( vehicles[i].behaviour == 2 )
+		{
+			// "Behaviour parked": a static prop at its .mis origin (e.g. a plane the
+			// player walks up to in Mission 1). No bot, no objective/bonus counters.
+			GameEntity* v = G_SpawnMissionVehicle( vehicles[i].index, vehicles[i].team,
+					vehicles[i].origin, vehicles[i].angles );
+			if( v )
+				spawned++;
+		}
+		else if( availableVehicles[vehicles[i].index].cat & ( CAT_PLANE | CAT_HELO ) )
 		{
 			bool passive = ( vehicles[i].behaviour == 1 );
 

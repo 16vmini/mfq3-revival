@@ -821,7 +821,9 @@ static void MF_ParseVehicle( char **buf, mission_vehicle_t* veh )
 			token = COM_ParseExt( buf, false );
 			if( token[0] )
 			{
-				veh->behaviour = ( !Q_stricmp( token, "passive" ) ) ? 1 : 0;
+				if( !Q_stricmp( token, "parked" ) )       veh->behaviour = 2;	// static prop at its .mis origin (no bot, not a target)
+				else if( !Q_stricmp( token, "passive" ) ) veh->behaviour = 1;
+				else                                      veh->behaviour = 0;
 				continue;
 			}
 		}

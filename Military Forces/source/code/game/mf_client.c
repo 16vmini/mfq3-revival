@@ -257,6 +257,7 @@ Initializes all non-persistant parts of playerState
 */
 GameEntity *SelectSpectatorSpawnPoint( vec3_t origin, vec3_t angles );
 GameEntity *SelectInitialSpawnPoint( vec3_t origin, vec3_t angles );
+static int s_boardVehIdx = -1;	// one-shot vehicle override set by MF_CheckBoardVehicle
 
 
 void MF_ClientSpawn( int clientNum, long cs_flags, const spawnpoint_t *startOverride )
@@ -295,6 +296,14 @@ void MF_ClientSpawn( int clientNum, long cs_flags, const spawnpoint_t *startOver
 			MF_GetMissionPlayerStart( &psVeh, NULL, NULL ) &&
 			psVeh >= 0 && psVeh < bg_numberOfVehicles )
 			vehIndex = psVeh;
+	}
+
+	// LQM boarding: a walk-up board (MF_CheckBoardVehicle) overrides everything,
+	// including the mission PlayerStart vehicle - one-shot.
+	if( s_boardVehIdx >= 0 && s_boardVehIdx < bg_numberOfVehicles )
+	{
+		vehIndex = s_boardVehIdx;
+		s_boardVehIdx = -1;
 	}
 
 	GameEntity* ent;
@@ -743,4 +752,181 @@ void MF_ClientSpawn( int clientNum, long cs_flags, const spawnpoint_t *startOver
 
 	// clear entity state values
 	BG_PlayerStateToEntityState( &client->ps_, &ent->s, true );
+}
+
+/*
+===========================================================================
+MFQ3 Mission 1: LQM walk-up boarding.
+MF_CheckBoardVehicle runs each ClientThink for infantry: find a parked
+vehicle prop (ET_MISC_VEHICLE) nearby, prompt, and on +button13 swap the
+client into that vehicle at the prop's exact spot (the prop is removed).
+===========================================================================
+*/
+// The abandoned plane: a smoking shell on a ballistic arc; explodes on impact.
+struct Think_EjectedShell : public GameEntity::EntityFunc_Think
+{
+	virtual void execute()
+	{
+		GameEntity *e = self_;
+		vec3_t now;
+		trace_t tr;
+		BG_EvaluateTrajectory( &e->s.pos, theLevel.time_, now );
+		SV_Trace( &tr, e->r.currentOrigin, NULL, NULL, now, e->s.number, MASK_SOLID, false );
+		if( tr.fraction < 1.0f )
+		{
+			VectorCopy( tr.endpos, e->r.currentOrigin );
+			VectorCopy( tr.endpos, e->s.pos.trBase );
+			e->s.pos.trType = TR_STATIONARY;
+			e->s.generic1 = 0;					// smoke off
+			G_AddEvent( e, EV_VEHICLE_GIB, 0, true );	// the big boom in the distance
+			e->setThink( new GameEntity::EntityFunc_Free );
+			e->nextthink_ = theLevel.time_ + 2000;
+			SV_LinkEntity( e );
+			return;
+		}
+		VectorCopy( now, e->r.currentOrigin );
+		SV_LinkEntity( e );
+		e->nextthink_ = theLevel.time_ + 50;
+	}
+};
+
+static void MF_EjectFromPlane( GameEntity *ent )
+{
+	GameClient	*client = ent->client_;
+	int			clientNum = client->ps_.clientNum;
+	int			planeIdx = client->vehicle_;
+	int			lqmIdx = -1, v;
+	vec3_t		org, ang, vel;
+	char		ui[MAX_INFO_STRING];
+	spawnpoint_t pt;
+
+	for( v = 0; v < bg_numberOfVehicles; v++ )
+		if( availableVehicles[v].cat & CAT_LQM ) { lqmIdx = v; break; }
+	if( lqmIdx < 0 ) return;
+
+	VectorCopy( client->ps_.origin, org );
+	VectorCopy( client->ps_.vehicleAngles, ang );
+	VectorCopy( client->ps_.velocity, vel );
+
+	// the abandoned plane flies on - smoking, doomed
+	GameEntity *shell = theLevel.spawnEntity();
+	shell->classname_	= "ejected_plane";
+	shell->s.eType		= ET_MISC_VEHICLE;
+	shell->s.modelindex	= planeIdx;
+	shell->s.modelindex2 = 255;
+	VectorCopy( availableVehicles[planeIdx].mins, shell->r.mins );
+	VectorCopy( availableVehicles[planeIdx].maxs, shell->r.maxs );
+	VectorCopy( org, shell->s.pos.trBase );
+	VectorCopy( vel, shell->s.pos.trDelta );
+	shell->s.pos.trType	= TR_GRAVITY;
+	shell->s.pos.trTime	= theLevel.time_;
+	VectorCopy( ang, shell->s.angles );
+	VectorCopy( ang, shell->s.apos.trBase );
+	shell->s.apos.trType = TR_STATIONARY;
+	VectorCopy( org, shell->r.currentOrigin );
+	shell->s.generic1	= 1;				// smoke trail
+	shell->r.contents	= 0;				// cosmetic shell - nothing collides with it
+	shell->takedamage_	= false;
+	shell->idxScriptBegin_ = shell->idxScriptEnd_ = -1;
+	shell->setThink( new Think_EjectedShell );
+	shell->nextthink_	= theLevel.time_ + 50;
+	SV_LinkEntity( shell );
+
+	// ...and the pilot becomes a little person under a parachute
+	VectorCopy( org, pt.origin );
+	pt.origin[2] += 12;
+	pt.angles[0] = 0; pt.angles[1] = ang[YAW]; pt.angles[2] = 0;
+
+	SV_GetUserinfo( clientNum, ui, sizeof( ui ) );
+	Info_SetValueForKey( ui, "cg_nextVehicle", va( "%d", lqmIdx ) );
+	SV_SetUserinfo( clientNum, ui );
+	ClientUserinfoChanged( clientNum );
+
+	s_boardVehIdx = lqmIdx;
+	MF_ClientSpawn( clientNum, 0, &pt );
+	VectorScale( vel, 0.25f, client->ps_.velocity );	// carry some of the jet's motion
+	SV_GameSendServerCommand( clientNum, "cp \"EJECT! EJECT! EJECT!\n\"" );
+	SV_GameSendServerCommand( clientNum, va( "print \"%s^7 ejected!\n\"", client->pers_.netname_ ) );
+}
+
+static int s_lastBoardPrompt[MAX_CLIENTS];
+static int s_lastBoardButtons[MAX_CLIENTS];
+
+void MF_CheckBoardVehicle( GameEntity *ent )
+{
+	GameClient	*client = ent->client_;
+	usercmd_t	*ucmd;
+	GameEntity	*best = NULL;
+	float		bestDist = 70.0f;		// boarding radius (world units) - close to the jet
+	int			i, clientNum;
+
+	if( !client ) return;
+	if( client->vehicle_ < 0 ) return;
+	if( client->ps_.stats[STAT_HEALTH] <= 0 ) return;
+
+	clientNum = client->ps_.clientNum;
+	ucmd = &client->pers_.cmd_;
+
+	// airborne in a plane/helo? F = EJECT (board's evil twin)
+	if( availableVehicles[client->vehicle_].cat & ( CAT_PLANE | CAT_HELO ) )
+	{
+		if( !( client->ps_.ONOFF & OO_LANDED ) &&
+			( ucmd->buttons & BUTTON_BOARD ) && !( s_lastBoardButtons[clientNum] & BUTTON_BOARD ) )
+			MF_EjectFromPlane( ent );
+		s_lastBoardButtons[clientNum] = ucmd->buttons;
+		return;
+	}
+
+	if( !( availableVehicles[client->vehicle_].cat & CAT_LQM ) )
+	{
+		s_lastBoardButtons[clientNum] = ucmd->buttons;
+		return;
+	}
+
+	for( i = MAX_CLIENTS; i < MAX_GENTITIES; i++ )
+	{
+		GameEntity *e = theLevel.getEntity( i );
+		if( !e || !e->inuse_ ) continue;
+		if( e->s.eType != ET_MISC_VEHICLE || e->s.modelindex2 != 255 ) continue;
+		if( e->health_ <= 0 ) continue;
+		if( e->s.modelindex < 0 || e->s.modelindex >= bg_numberOfVehicles ) continue;
+		vec3_t d;
+		VectorSubtract( e->r.currentOrigin, ent->r.currentOrigin, d );
+		float dist = VectorLength( d );
+		if( dist < bestDist ) { bestDist = dist; best = e; }
+	}
+
+	if( best )
+	{
+		if( theLevel.time_ - s_lastBoardPrompt[clientNum] > 3000 )
+		{
+			s_lastBoardPrompt[clientNum] = theLevel.time_;
+			SV_GameSendServerCommand( clientNum, va( "cp \"Press F to board the %s\n\"",
+				availableVehicles[best->s.modelindex].descriptiveName ) );
+		}
+		// rising edge of +button13 -> board
+		if( ( ucmd->buttons & BUTTON_BOARD ) && !( s_lastBoardButtons[clientNum] & BUTTON_BOARD ) )
+		{
+			spawnpoint_t pt;
+			int veh = best->s.modelindex;
+			char ui[MAX_INFO_STRING];
+
+			VectorCopy( best->r.currentOrigin, pt.origin );
+			pt.origin[2] += 8;	// a touch above; the landed-spawn trace seats it
+			VectorCopy( best->s.angles, pt.angles );
+
+			best->freeUp();		// the parked prop becomes the player's ride
+
+			SV_GetUserinfo( clientNum, ui, sizeof( ui ) );
+			Info_SetValueForKey( ui, "cg_nextVehicle", va( "%d", veh ) );
+			SV_SetUserinfo( clientNum, ui );
+			ClientUserinfoChanged( clientNum );
+
+			s_boardVehIdx = veh;
+			MF_ClientSpawn( clientNum, 0, &pt );
+			SV_GameSendServerCommand( clientNum, va( "print \"%s^7 boarded the %s\n\"",
+				client->pers_.netname_, availableVehicles[veh].descriptiveName ) );
+		}
+	}
+	s_lastBoardButtons[clientNum] = ucmd->buttons;
 }

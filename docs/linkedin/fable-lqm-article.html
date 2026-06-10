@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>LinkedIn article — Fable cracked our 20-year-old bug (copy &amp; paste)</title>
+<style>
+  body { font-family: Georgia, 'Times New Roman', serif; background:#f4f4f6; margin:0; }
+  .page { max-width: 740px; margin: 0 auto; padding: 30px 24px 80px; }
+  .box { background:#fff; border:1px solid #ddd; border-radius:8px; padding:28px 32px; margin-bottom:28px; }
+  .label { font-family: Arial, sans-serif; font-size:12px; letter-spacing:1px; text-transform:uppercase; color:#888; margin:0 0 14px; }
+  h1 { font-size: 30px; line-height:1.25; margin:0 0 6px; }
+  h2 { font-size: 21px; margin:28px 0 8px; }
+  p, li { font-size: 17px; line-height: 1.55; color:#222; }
+  .hashtags { font-family: Arial, sans-serif; color:#0a66c2; font-size:15px; line-height:1.6; }
+  img { max-width:100%; border-radius:6px; border:1px solid #ccc; }
+  .cap { font-size:13px; color:#777; font-family: Arial, sans-serif; margin-top:6px; }
+  .feed { background:#eef6ff; }
+  code { font-family: Consolas, monospace; font-size: 15px; background:#f2f2f2; padding:1px 5px; border-radius:3px; }
+</style>
+</head>
+<body>
+<div class="page">
+
+<div class="box feed">
+<p class="label">Short version — for the feed post (paste this as the post that links the article)</p>
+<p>Claude’s new <strong>Fable</strong> model dropped this morning. By tonight it had fixed a bug that’s been unshippable since <strong>2003</strong>.</p>
+<p>For weeks I’ve been reviving Military Forces (MFQ3), my old Quake III mod, with Claude. One feature beat every attempt: the “little people” — infantry the original team left 80% finished and never shipped. Previous Claude sessions got planes flying, helicopters hovering, a Cold War mode... but the soldier stayed broken.</p>
+<p>Switched to Fable a few hours after release. One evening later: the soldier walks, boards a parked F-16, flies, and EJECTS with a parachute while the empty jet smokes off and explodes in the distance. Full story in the article. 👇</p>
+<p class="hashtags">#Fable #Claude #Anthropic #ClaudeCode #AIEngineering #GameDev #Quake3 #RetroComputing #Modding #BuildInPublic</p>
+</div>
+
+<div class="box">
+<p class="label">Article — paste into LinkedIn “Write article” (title, then body)</p>
+
+<h1>The new Claude model shipped this morning. Tonight it fixed a bug from 2003.</h1>
+
+<p><em>Hero image: the little green soldier standing next to his F-16 — see attached screenshots.</em></p>
+
+<p>Twenty-something years ago I helped make a Quake III mod called Military Forces — planes, helicopters and tanks fighting over big outdoor maps. The team’s grand dream was “little people”: get out of your jet, run across the runway on foot, steal another one. The code is still full of their comments. They got it about 80% built, never shipped it, and the project went quiet around 2006.</p>
+
+<p>For the last few weeks I’ve been resurrecting MFQ3 from the original source with Claude — as a hobby project and an experiment in what AI pair-programming can really do on a gnarly legacy codebase. It has gone further than I ever expected: the 2003 engine builds with modern MSVC, new aircraft converted from free 3D models with animated landing gear, a VTOL F-35B, a Cold War game mode, single-player missions. All of that was built with Claude Opus over many evenings, and it was genuinely impressive.</p>
+
+<p>But the little people stayed broken. Across multiple sessions the infantry would either not appear in the menus at all, leave you stuck on a “Limbo” screen staring at an empty runway, or hard-crash the game inside the graphics driver the moment the soldier should have appeared. We parked it. Some bugs just feel cursed.</p>
+
+<h2>Then Fable dropped</h2>
+
+<p>Anthropic released their new <strong>Fable</strong> model this morning. A few hours later I typed <code>/model claude-fable-5</code> mid-session and said: “can you get lqm working?” (LQM is the mod’s internal name for the little people.)</p>
+
+<p>What happened next was the most impressive debugging session I’ve watched an AI do. The soldier wasn’t one bug. It was <strong>five, stacked on top of each other</strong>, and Fable peeled them off one at a time:</p>
+
+<ul>
+<li><strong>Two selection gates.</strong> The soldier was flagged for one team only, and no map on Earth allowed the infantry category — so he could never even appear in the vehicle menu.</li>
+<li><strong>The Limbo trap.</strong> A previous “safety” change had deliberately excluded infantry from the client’s vehicle-sync — so the server was actually spawning the soldier successfully, while the client sat forever on the Limbo screen, hiding him behind a menu. We’d been standing on that runway all along.</li>
+<li><strong>A corrupt model format.</strong> The crash in the GPU driver? Fable spun up a side agent to render a preview of the soldier model outside the game — and that agent discovered the MD3 model files were malformed: a 32-byte name field where Quake III’s format demands 64 bytes, silently corrupting every offset after it. The engine read garbage vertices and the graphics driver died. Fable wrote a small byte-surgery tool to repair the files in place.</li>
+<li><strong>Broken textures too.</strong> The texture files had their width and height at the wrong byte offsets — the engine read them as 0×0 images and refused the level. Pixels re-extracted, clean files rewritten.</li>
+</ul>
+
+<p>A detail I loved: to chase the crash it set up a <em>hands-free reproduction loop</em> — a developer flag that auto-spawns the soldier, launch the game, soak for 50 seconds, check whether the process survived, read the flushed log. No human in the loop. It iterated on its own crash like an engineer with a debugger and infinite patience.</p>
+
+<h2>One evening, twenty-two years</h2>
+
+<p>And then, because the soldier was finally standing on the runway, we just… kept going. By the end of the same evening:</p>
+
+<ul>
+<li>🪖 The soldier <strong>walks</strong> (and shoots — after we stopped him firing from his own feet).</li>
+<li>✈️ He can stroll up to a parked F-16 — “Press F to board” — and <strong>get in and fly</strong>. That’s the exact mechanic the original team never finished.</li>
+<li>🪂 And the feature we joked about in 2003: <strong>EJECT</strong>. Press F mid-flight and you punch out under a parachute while your abandoned jet flies on, trailing smoke, and explodes in the distance.</li>
+</ul>
+
+<p>Walk → board → fly → eject → float down → walk to the next plane. The loop we sketched on a forum twenty-two years ago, running, on a model that was released the same day.</p>
+
+<h2>What actually felt different</h2>
+
+<p>Same codebase, same tools, same me. What changed was the model’s appetite for root cause. Where earlier sessions would fix the visible symptom and stall on the next layer, Fable kept pulling the thread — five layers deep — building its own test harnesses and side agents along the way, and never once asked me to just try turning it off and on again.</p>
+
+<p>I’m not claiming a benchmark; this is one stubborn bug in one weird old codebase. But if you have a “cursed” ticket that’s survived several attempts, it might be worth one more go this week.</p>
+
+<p>The whole revival is documented at mattgreenworks.co.uk/mfq3, and the source work lives on GitHub. Next up: giving the little fella a proper walk animation — and a third crack at the carrier landing.</p>
+
+<p class="hashtags">#Fable #Claude #Anthropic #ClaudeCode #AIEngineering #AIagents #GameDev #Quake3 #idTech3 #RetroComputing #Modding #LegacyCode #BuildInPublic</p>
+</div>
+
+<div class="box">
+<p class="label">Images to attach (in this folder)</p>
+<p><img src="sarge-and-f16.jpg" alt="The soldier next to a parked F-16 on the runway"></p>
+<p class="cap">Hero: the little person and his F-16 — “Press F to board”. (sarge-and-f16.jpg)</p>
+<p><img src="sarge-preview.png" alt="The Sarge model, rendered offline"></p>
+<p class="cap">The Sarge model rendered by the offline MD3 tool that caught the corrupt file format. (sarge-preview.png)</p>
+</div>
+
+</div>
+</body>
+</html>

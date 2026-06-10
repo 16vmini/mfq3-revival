@@ -111,6 +111,11 @@ static void CG_Misc_Plane( centity_t *cent )
 		drawInfo.bodyFrame = ( cent->currentState.frame > 12 ? 2 : 1 );
 	}
 
+	// parked aircraft prop: show the gear down (spawner sets OO_GEAR on parked planes)
+	if( cent->currentState.ONOFF & OO_GEAR ) {
+		drawInfo.gearFrame = availableVehicles[cent->currentState.modelindex].maxGearFrame;
+	}
+
 	// swingwings
 	if( availableVehicles[cent->currentState.modelindex].caps & HC_SWINGWING ) {
 		drawInfo.swingAngle = cent->currentState.angles2[PITCH];

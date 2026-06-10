@@ -55,6 +55,11 @@ static void CG_LQMFlags( centity_t *cent ) {
 CG_GroundVehicle
 ===============
 */
+// persistent LQM animation state, indexed by entity number (see note in CG_LQM)
+static int s_lqmLegsFrame[MAX_GENTITIES], s_lqmLegsTime[MAX_GENTITIES];
+static int s_lqmTorsoFrame[MAX_GENTITIES], s_lqmTorsoTime[MAX_GENTITIES];
+static int s_lqmTorsoAngle[MAX_GENTITIES], s_lqmLegsAngle[MAX_GENTITIES];
+
 void CG_LQM( centity_t *cent, clientInfo_t *ci ) 
 {
 	vec3_t			velocity;	
@@ -73,13 +78,17 @@ void CG_LQM( centity_t *cent, clientInfo_t *ci )
 	// Copy animation state
 	drawInfo.anim = cent->currentState.vehicleAnim;
 
-	// Copy animation frames
-	drawInfo.lastTorsoAngle = cent->bayAnim;
-	drawInfo.lastLegsAngle = cent->gearAnim;
-	drawInfo.torsoFrame = cent->bayAnimFrame;
-	drawInfo.legsFrame = cent->gearAnimFrame;
-	drawInfo.torsoTime = cent->bayAnimStartTime;
-	drawInfo.legsTime = cent->gearAnimStartTime;
+	// Copy animation frames - from a static per-entity store; the predicted-player
+	// centity is rebuilt every frame so cent-> fields don't survive (frozen anims)
+	{
+		int en = cent->currentState.number & (MAX_GENTITIES-1);
+		drawInfo.lastTorsoAngle = s_lqmTorsoAngle[en];
+		drawInfo.lastLegsAngle = s_lqmLegsAngle[en];
+		drawInfo.torsoFrame = s_lqmTorsoFrame[en];
+		drawInfo.legsFrame = s_lqmLegsFrame[en];
+		drawInfo.torsoTime = s_lqmTorsoTime[en];
+		drawInfo.legsTime = s_lqmLegsTime[en];
+	}
 
 	// get speed
 	VectorCopy( cent->currentState.pos.trDelta, velocity );
@@ -111,13 +120,37 @@ void CG_LQM( centity_t *cent, clientInfo_t *ci )
 	// draw lqm
 	CG_DrawLQM(&drawInfo);
 
-	// return frames
-	cent->bayAnim = drawInfo.lastTorsoAngle;
-	cent->gearAnim = drawInfo.lastLegsAngle;
-	cent->bayAnimFrame = drawInfo.torsoFrame;
-	cent->bayAnimStartTime = drawInfo.torsoTime;
-	cent->gearAnimFrame = drawInfo.legsFrame;
-	cent->gearAnimStartTime = drawInfo.legsTime;
+	// parachute canopy while descending - MFQ3 infantry always wears a chute
+	if( !( ONOFF & OO_LANDED ) && cent->currentState.pos.trDelta[2] < -20 )
+	{
+		static qhandle_t hChute = 0;
+		refEntity_t chute;
+		if( !hChute )
+			hChute = refExport.RegisterModel( "models/vehicles/lqms/parachute.md3" );
+		if( hChute )
+		{
+			memset( &chute, 0, sizeof(chute) );
+			chute.hModel = hChute;
+			chute.reType = RT_MODEL;
+			VectorCopy( cent->lerpOrigin, chute.origin );
+			VectorCopy( cent->lerpOrigin, chute.lightingOrigin );
+			VectorCopy( chute.origin, chute.oldorigin );
+			AxisCopy( axisDefault, chute.axis );
+			chute.renderfx = RF_LIGHTING_ORIGIN;
+			refExport.AddRefEntityToScene( &chute );
+		}
+	}
+
+	// return frames to the persistent store
+	{
+		int en = cent->currentState.number & (MAX_GENTITIES-1);
+		s_lqmTorsoAngle[en] = drawInfo.lastTorsoAngle;
+		s_lqmLegsAngle[en] = drawInfo.lastLegsAngle;
+		s_lqmTorsoFrame[en] = drawInfo.torsoFrame;
+		s_lqmTorsoTime[en] = drawInfo.torsoTime;
+		s_lqmLegsFrame[en] = drawInfo.legsFrame;
+		s_lqmLegsTime[en] = drawInfo.legsTime;
+	}
 	
 
 	// flags
