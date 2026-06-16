@@ -1049,6 +1049,7 @@ typedef enum {
 	MOBJ_ALTITUDE,		// player height above ground (AGL), world units
 	MOBJ_KILLS,			// mission enemies destroyed
 	MOBJ_WAYPOINTS,		// .mis checkpoints flown through (in sequence)
+	MOBJ_HOME,			// settled (slow + low) within Radius of the .mis Origin point
 } missionObjType_t;
 typedef enum {
 	MOP_GT = 0,			// >
@@ -1062,6 +1063,8 @@ struct mission_objective_t {
 	int				op;		// missionObjOp_t
 	float			value;	// threshold
 	char			text[128];	// shown to the player
+	vec3_t			origin;	// MOBJ_HOME: the home point (.mis "Origin x;y;z")
+	float			radius;	// MOBJ_HOME: how close counts as home (.mis "Radius")
 };
 
 // .mis "Checkpoints" block: fly-through gates for a waypoint course. The player

@@ -1,0 +1,56 @@
+// MFQ3 - MISSION 1: "NORTH STAR" - the full 2003 dream, end to end.
+// Spawn on foot -> walk to your F-16 -> press F to board -> fly out -> destroy
+// the enemy jet parked on its airfield -> come home and settle on the strip
+// (land your plane, or eject and parachute onto the runway) -> Mission Complete.
+Overview
+{
+	map	mfq3_norway
+	gameset	2
+	gametype	0
+	mission	"Mission 1: North Star"
+	goal	SearchAndDestroy
+	order	15
+	description	"On foot on the Norway strip. Your F-16 is parked ahead; an enemy jet sits on the ground to the north-east. Destroy it and come home."
+	briefing	"Walk to your F-16 and press F to board. Fly north-east and destroy the enemy jet parked in the hills. Then come home: land on the strip - or eject and parachute onto it. Boots or wheels, get back to base."
+	success	"MISSION 1 COMPLETE - walk, fly, fight, come home. The 2003 dream, running."
+	failure	"You didn't make it home. Reset and run the loop again."
+}
+Entities
+{
+	PlayerStart
+	{
+		Index	59
+		Origin	-5700.8;5772.9;500.0
+		Angles	0.0;-87.6;0.0
+		Speed	0
+	}
+	Vehicle
+	{
+		Index	0
+		Name	yourjet
+		Team	1
+		Behaviour	parked
+		Origin	-5690.0;5520.0;500.0
+		Angles	0.0;-87.6;0.0
+		Waypoints
+		{
+		}
+	}
+	Vehicle
+	{
+		Index	0
+		Name	bandit
+		Team	2
+		Behaviour	parked
+		Origin	-3872.0;4768.0;700.0
+		Angles	0.0;90.0;0.0
+		Waypoints
+		{
+		}
+	}
+}
+Objectives
+{
+	Objective { Type kills  Op >=  Value 1  Text "Enemy jet destroyed - return to base!" }
+	Objective { Type home   Op >=  Value 1  Radius 700  Origin -5700;5772;460  Text "Welcome home." }
+}

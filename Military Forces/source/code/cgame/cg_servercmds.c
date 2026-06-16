@@ -516,6 +516,13 @@ static void CG_ServerCommand( void ) {
 		return;
 	}
 
+	if ( !strcmp( cmd, "radio" ) ) {			// MFQ3 AI radio: play a neural-TTS voice call
+		sfxHandle_t h = S_RegisterSound( va( "sound/radio/%s.wav", CG_Argv(1) ), false );
+		if( h )
+			S_StartLocalSound( h, CHAN_ANNOUNCER );
+		return;
+	}
+
 	if ( !strcmp( cmd, "mission_end" ) ) {		// MFQ3 missions: success/fail end screen
 		CG_MissionEnd_Set( atoi( CG_Argv(1) ) != 0, atoi( CG_Argv(2) ), atoi( CG_Argv(3) ),
 			atoi( CG_Argv(4) ), atoi( CG_Argv(5) ) );

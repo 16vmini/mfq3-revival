@@ -1,0 +1,27 @@
+// MFQ3 - Carrier Free Flight (catapult + landing test bench)
+// Spawn parked in an F-16 at the carrier stern. No objectives - free roam so you
+// can test the CATAPULT (press F while sitting on the deck) and try to land back
+// on. Press FIRE at any end screen to restart (there is none here - just fly).
+Overview
+{
+	map	mfq3_carrier
+	gameset	2
+	gametype	0
+	mission	"Carrier Free Flight"
+	goal	TakeOff
+	order	16
+	description	"Parked on the carrier deck in an F-16. Free roam: test the catapult (press F on the deck) and practise landing back on."
+	briefing	"You're parked on the deck. Press F for a CATAPULT shot off the bow - or roll on the burner. Fly around, then try to land back on the deck. No objectives: just experiment."
+	success	"Nice flying."
+	failure	"Splash."
+}
+Entities
+{
+	PlayerStart
+	{
+		Index	0
+		Origin	-650.0;0.0;130.0
+		Angles	0.0;0.0;0.0
+		Speed	0
+	}
+}

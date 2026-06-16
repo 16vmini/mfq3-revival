@@ -790,6 +790,37 @@ struct Think_EjectedShell : public GameEntity::EntityFunc_Think
 	}
 };
 
+// Steam catapult: a landed plane gets flung forward to flying speed in one shot.
+// (Works off any deck/runway - on the carrier it's the proper cat launch; on land
+//  it's a JATO-style assist. F triggers it when you're a plane sitting still.)
+static void MF_CatapultLaunch( GameEntity *ent )
+{
+	GameClient	*client = ent->client_;
+	int			veh = client->vehicle_;
+	float		launch;
+
+	if( !( client->ps_.ONOFF & OO_LANDED ) ) return;	// already flying
+	if( availableVehicles[veh].cat & CAT_HELO ) return;	// helos don't cat-launch
+	if( !G_InCatapultZone( client->ps_.origin ) ) return;	// deck-only: no cat on a normal runway
+
+	// shoot to ~2.1x stall (comfortably airborne); speed is stored x10
+	launch = availableVehicles[veh].stallspeed * 10.0f * 2.1f;
+	if( launch < 1.0f ) launch = 2400.0f;
+
+	client->ps_.ONOFF &= ~( OO_LANDED | OO_STALLED );	// you're flying now
+	client->ps_.ONOFF |= OO_GEAR;						// gear still down off the cat
+	client->ps_.speed = (int)launch;
+	client->ps_.fixed_throttle = availableVehicles[veh].maxthrottle;
+	client->ps_.vehicleAngles[PITCH] = -7;				// nose-up off the bow
+	client->ps_.vehicleAngles[ROLL]  = 0;
+
+	// "takeoff mode": the wire ignores a departing plane (it only traps a plane
+	// arriving from the air). The brief suppress covers the launch-run flicker.
+	G_SuppressArrestor( client->ps_.clientNum, 2500 );
+	SV_GameSendServerCommand( client->ps_.clientNum, "cp \"CATAPULT - GO! GO! GO!\n\"" );
+	G_RadioCall( "radio_airborne", 600 );
+}
+
 static void MF_EjectFromPlane( GameEntity *ent )
 {
 	GameClient	*client = ent->client_;
@@ -847,6 +878,8 @@ static void MF_EjectFromPlane( GameEntity *ent )
 	VectorScale( vel, 0.25f, client->ps_.velocity );	// carry some of the jet's motion
 	SV_GameSendServerCommand( clientNum, "cp \"EJECT! EJECT! EJECT!\n\"" );
 	SV_GameSendServerCommand( clientNum, va( "print \"%s^7 ejected!\n\"", client->pers_.netname_ ) );
+	G_RadioCall( "radio_eject", 0 );
+	G_RadioCall( "radio_chute", 3000 );
 }
 
 static int s_lastBoardPrompt[MAX_CLIENTS];
@@ -867,12 +900,17 @@ void MF_CheckBoardVehicle( GameEntity *ent )
 	clientNum = client->ps_.clientNum;
 	ucmd = &client->pers_.cmd_;
 
-	// airborne in a plane/helo? F = EJECT (board's evil twin)
+	// F in a plane/helo is context-sensitive: airborne = EJECT, on the deck = CATAPULT.
 	if( availableVehicles[client->vehicle_].cat & ( CAT_PLANE | CAT_HELO ) )
 	{
-		if( !( client->ps_.ONOFF & OO_LANDED ) &&
-			( ucmd->buttons & BUTTON_BOARD ) && !( s_lastBoardButtons[clientNum] & BUTTON_BOARD ) )
-			MF_EjectFromPlane( ent );
+		bool press = ( ucmd->buttons & BUTTON_BOARD ) && !( s_lastBoardButtons[clientNum] & BUTTON_BOARD );
+		if( press )
+		{
+			if( client->ps_.ONOFF & OO_LANDED )
+				MF_CatapultLaunch( ent );		// steam-cat shot off the deck
+			else
+				MF_EjectFromPlane( ent );		// punch out
+		}
 		s_lastBoardButtons[clientNum] = ucmd->buttons;
 		return;
 	}
@@ -890,6 +928,7 @@ void MF_CheckBoardVehicle( GameEntity *ent )
 		if( e->s.eType != ET_MISC_VEHICLE || e->s.modelindex2 != 255 ) continue;
 		if( e->health_ <= 0 ) continue;
 		if( e->s.modelindex < 0 || e->s.modelindex >= bg_numberOfVehicles ) continue;
+		if( e->flags_ & FL_MISSION_TARGET ) continue;	// can't board the enemy's objective jet
 		vec3_t d;
 		VectorSubtract( e->r.currentOrigin, ent->r.currentOrigin, d );
 		float dist = VectorLength( d );
@@ -926,6 +965,7 @@ void MF_CheckBoardVehicle( GameEntity *ent )
 			MF_ClientSpawn( clientNum, 0, &pt );
 			SV_GameSendServerCommand( clientNum, va( "print \"%s^7 boarded the %s\n\"",
 				client->pers_.netname_, availableVehicles[veh].descriptiveName ) );
+			G_RadioCall( "radio_clearance", 3500 );	// tower clears you once you're strapped in
 		}
 	}
 	s_lastBoardButtons[clientNum] = ucmd->buttons;

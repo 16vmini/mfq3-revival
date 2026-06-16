@@ -1714,6 +1714,12 @@ void G_RunFrame( int levelTime )
 	// programmatic mission objectives (altitude/kills/...): condition-based completion
 	MF_MissionObjectiveFrame();
 
+	// AI radio: flush queued voice calls (tower/AWACS/pilot)
+	G_RadioFrame();
+
+	// carrier arrestor wires: trap a fast plane landing on the deck
+	G_ArrestorFrame();
+
 	// see if it is time to do a tournement restart
 	CheckTournament();
 

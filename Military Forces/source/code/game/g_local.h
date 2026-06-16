@@ -785,6 +785,15 @@ void MF_ClientBegin( int clientNum );
 void MF_ClientSpawn( int clientNum, long cs_flags, const spawnpoint_t *startOverride );
 void MF_CheckBoardVehicle( GameEntity *ent );	// LQM walk-up boarding (Mission 1)
 
+// AI radio (g_missions.c): queue a named voice call with a delay; cgame plays
+// the pre-generated neural-TTS file sound/radio/<name>.wav
+void G_RadioCall( const char* name, int delayMs );
+void G_RadioReset( void );
+void G_RadioFrame( void );
+void G_ArrestorFrame( void );	// carrier arrestor-wire trap (g_missions.c)
+void G_SuppressArrestor( int clientNum, int ms );	// cat-launch immunity from the wire
+bool G_InCatapultZone( const float* origin );		// is a point over a func_catapult zone?
+
 // mfq3
 // mf_vehiclespawn.c
 //

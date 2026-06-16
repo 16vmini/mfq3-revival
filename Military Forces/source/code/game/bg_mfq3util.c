@@ -967,6 +967,7 @@ static int MF_ObjTypeFromString( const char *s )
 	if( !Q_stricmp( s, "altitude" ) )	return MOBJ_ALTITUDE;
 	if( !Q_stricmp( s, "kills" ) )		return MOBJ_KILLS;
 	if( !Q_stricmp( s, "waypoints" ) )	return MOBJ_WAYPOINTS;
+	if( !Q_stricmp( s, "home" ) )		return MOBJ_HOME;
 	return MOBJ_NONE;
 }
 
@@ -1013,6 +1014,17 @@ static void MF_ParseObjective( char **buf, mission_objective_t* obj )
 		{
 			token = COM_ParseExt( buf, false );
 			if( token[0] && obj ) Q_strncpyz( obj->text, token, sizeof( obj->text ) );
+		}
+		else if( !strcmp( token, "Origin" ) )		// MOBJ_HOME: the home point
+		{
+			token = COM_ParseExt( buf, false );
+			if( token[0] && obj )
+				sscanf( token, "%f;%f;%f", &obj->origin[0], &obj->origin[1], &obj->origin[2] );
+		}
+		else if( !strcmp( token, "Radius" ) )		// MOBJ_HOME: how close counts
+		{
+			token = COM_ParseExt( buf, false );
+			if( token[0] && obj ) obj->radius = atof( token );
 		}
 	}
 }

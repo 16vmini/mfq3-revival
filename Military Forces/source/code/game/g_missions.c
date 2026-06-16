@@ -247,6 +247,7 @@ void G_LoadMissionScripts()
 	s_gateLastSent				= -1;
 	s_gateHaveLast				= false;
 	memset( s_gateEnts, 0, sizeof(s_gateEnts) );
+	G_RadioReset();
 
 	memset( &overview, 0, sizeof(overview) );
 	memset( vehicles, 0, sizeof(vehicles) );
@@ -351,11 +352,21 @@ void G_LoadMissionScripts()
 		if( vehicles[i].behaviour == 2 )
 		{
 			// "Behaviour parked": a static prop at its .mis origin (e.g. a plane the
-			// player walks up to in Mission 1). No bot, no objective/bonus counters.
+			// player walks up to in Mission 1). No bot. A FRIENDLY (team 1/red)
+			// parked plane is boardable scenery; an ENEMY one (team 2/blue) is a
+			// primary destroy-target sitting on its airfield.
 			GameEntity* v = G_SpawnMissionVehicle( vehicles[i].index, vehicles[i].team,
 					vehicles[i].origin, vehicles[i].angles );
 			if( v )
+			{
 				spawned++;
+				if( vehicles[i].team == ClientBase::TEAM_BLUE )
+				{
+					v->flags_ |= FL_MISSION_TARGET;
+					s_missionTargetsTotal++;
+					s_missionTargetsRemaining++;
+				}
+			}
 		}
 		else if( availableVehicles[vehicles[i].index].cat & ( CAT_PLANE | CAT_HELO ) )
 		{
@@ -420,6 +431,126 @@ void G_MissionExternalBegin( int targets )
 	s_missionFailed				= false;
 }
 
+
+// --- AI radio (2026 tech in a 2003 engine): neural-TTS voice calls -----------
+// Server queues named calls with a delay; G_RadioFrame flushes them as
+// "radio <name>" server commands; cgame plays sound/radio/<name>.wav (a
+// pre-generated, radio-effected neural-TTS library - see _incoming/gen_radio.py).
+#define MAX_RADIO_QUEUE	6
+static struct { int time; char name[32]; } s_radioQ[MAX_RADIO_QUEUE];
+static int	s_radioQNum			= 0;
+static bool	s_radioAirborneDone	= false;	// one-shot "airborne" call per mission
+static int	s_noArrestUntil[MAX_CLIENTS];	// cat launch suppresses the wire briefly
+static bool	s_wasAirborne[MAX_CLIENTS];		// arrestor: was the plane flying last frame?
+static bool	s_landingPass[MAX_CLIENTS];		// arrestor: this touchdown came from the air
+
+void G_RadioCall( const char* name, int delayMs )
+{
+	if( s_radioQNum >= MAX_RADIO_QUEUE ) return;
+	s_radioQ[s_radioQNum].time = theLevel.time_ + delayMs;
+	Q_strncpyz( s_radioQ[s_radioQNum].name, name, sizeof( s_radioQ[0].name ) );
+	s_radioQNum++;
+}
+
+void G_RadioReset( void )
+{
+	s_radioQNum = 0;
+	s_radioAirborneDone = false;
+	memset( s_noArrestUntil, 0, sizeof( s_noArrestUntil ) );
+	memset( s_wasAirborne, 0, sizeof( s_wasAirborne ) );
+	memset( s_landingPass, 0, sizeof( s_landingPass ) );
+}
+
+// --- carrier arrestor wires -------------------------------------------------
+// Each frame, a LANDED plane rolling fast through a func_arrestor volume is
+// yanked to a stop (the "trap"). The catapult's twin - pure theatre.
+// per-client wire state: 0 = armed (ready to trap), 1 = trapping (announced,
+// still decelerating), 2 = spent (stopped - won't re-grab until you leave the zone)
+static int	s_trapState[MAX_CLIENTS];
+// "landing mode" vs "takeoff mode" (s_wasAirborne / s_landingPass declared above):
+// the wire only ever grabs a plane that just touched down FROM THE AIR. A plane
+// that's been sitting/taxiing/cat-rolling on the deck is departing - left alone.
+
+// called by the catapult so its own launch run isn't instantly snagged by the wire
+void G_SuppressArrestor( int clientNum, int ms )
+{
+	if( clientNum >= 0 && clientNum < MAX_CLIENTS )
+		s_noArrestUntil[clientNum] = theLevel.time_ + ms;
+}
+
+// is a world point inside any brush entity of the given classname? (carrier zones)
+static bool G_PointInZone( const float* o, const char* cls )
+{
+	int e;
+	for( e = MAX_CLIENTS; e < MAX_GENTITIES; e++ )
+	{
+		GameEntity* a = theLevel.getEntity( e );
+		if( !a || !a->inuse_ || !a->classname_ ) continue;
+		if( strcmp( a->classname_, cls ) != 0 ) continue;
+		if( o[0] >= a->r.absmin[0] && o[0] <= a->r.absmax[0] &&
+			o[1] >= a->r.absmin[1] && o[1] <= a->r.absmax[1] &&
+			o[2] >= a->r.absmin[2] - 30 && o[2] <= a->r.absmax[2] + 40 )
+			return true;
+	}
+	return false;
+}
+
+// the catapult (mf_client.c) asks this so the steam cat is a deck-only feature
+bool G_InCatapultZone( const float* origin )
+{
+	return G_PointInZone( origin, "func_catapult" );
+}
+
+void G_ArrestorFrame( void )
+{
+	int c;
+	for( c = 0; c < theLevel.maxclients_; c++ )
+	{
+		GameEntity* p = theLevel.getEntity( c );
+		if( !p || !p->client_ || p->health_ <= 0 ) { s_trapState[c] = 0; s_wasAirborne[c] = false; s_landingPass[c] = false; continue; }
+		int veh = p->client_->vehicle_;
+		if( veh < 0 || !( availableVehicles[veh].cat & CAT_PLANE ) ) { s_trapState[c] = 0; s_wasAirborne[c] = false; s_landingPass[c] = false; continue; }
+
+		// "landing mode vs takeoff mode": track airborne, and the instant the plane
+		// drops from air onto the deck that's a LANDING -> the wire is live for it.
+		if( !( p->client_->ps_.ONOFF & OO_LANDED ) )
+		{
+			s_wasAirborne[c] = true;		// flying: a future touchdown is trappable
+			s_trapState[c] = 0;
+			continue;
+		}
+		if( s_wasAirborne[c] )				// air -> deck this frame = a landing
+		{
+			s_wasAirborne[c] = false;
+			s_landingPass[c] = true;
+			s_trapState[c] = 0;
+		}
+		if( !s_landingPass[c] ) continue;	// parked / taxiing / cat-departing -> never trapped
+		if( theLevel.time_ < s_noArrestUntil[c] ) continue;	// just catapulted
+
+		// over an arrestor zone?
+		if( !G_PointInZone( p->client_->ps_.origin, "func_arrestor" ) )
+			continue;									// landed off the wires (long/short) - rolls on
+		if( s_trapState[c] == 2 ) { s_landingPass[c] = false; continue; }	// spent -> released
+
+		// armed + fast enough -> catch the wire (announce once)
+		if( s_trapState[c] == 0 )
+		{
+			if( p->client_->ps_.speed <= 120 ) continue;	// rolled on too slow - no catch
+			s_trapState[c] = 1;
+			SV_GameSendServerCommand( c, "cp \"TRAP! Good hook!\n\"" );
+			G_RadioCall( "radio_trap", 200 );
+		}
+
+		// trapping: bleed speed hard (exponential -> ~0 in under a second)
+		p->client_->ps_.fixed_throttle = 0;
+		p->client_->ps_.speed = (int)( p->client_->ps_.speed * 0.45f ) - 80;
+		if( p->client_->ps_.speed < 0 ) p->client_->ps_.speed = 0;
+		VectorScale( p->client_->ps_.velocity, 0.45f, p->client_->ps_.velocity );
+		if( p->client_->ps_.speed <= 150 )				// stopped -> wire spent (released)
+			s_trapState[c] = 2;
+	}
+}
 
 // Fire the Complete screen + end the level. Shared by destroy-objective missions
 // and programmatic-objective missions (they just pass different "primary" counts).
@@ -497,8 +628,21 @@ void G_MissionTargetDestroyed( GameEntity* target )
 		Com_Printf( "Mission: objective target destroyed (%d/%d remaining).\n",
 			s_missionTargetsRemaining, s_missionTargetsTotal );
 		SV_GameSendServerCommand( -1, va( "cp \"Target destroyed - %d remaining\n\"", s_missionTargetsRemaining ) );
+		G_RadioCall( "radio_splash", 500 );
 		return;
 	}
+
+	// all targets down. If the mission also has programmatic objectives (e.g.
+	// "return home"), DON'T complete yet - the objective frame finishes the job.
+	if( s_numObjectives > 0 )
+	{
+		Com_Printf( "Mission: all targets destroyed - objectives remain.\n" );
+		SV_GameSendServerCommand( -1, "cp \"All targets destroyed!\n\"" );
+		G_RadioCall( "radio_splash", 500 );
+		G_RadioCall( "radio_rtb", 4200 );
+		return;
+	}
+	G_RadioCall( "radio_splash", 500 );
 
 	// all primary objectives destroyed -> mission complete
 	G_MissionSendComplete( s_missionTargetsTotal, s_missionTargetsTotal );
@@ -515,6 +659,7 @@ void G_MissionFailed( void )
 		return;
 
 	s_missionFailed = true;
+	G_RadioCall( "radio_failed", 900 );
 	G_FreeAllGates();			// clear gate entities before intermission/reload
 	if( s_numObjectives > 0 )
 	{
@@ -583,6 +728,19 @@ static float G_MissionMeasure( const mission_objective_t* obj, GameEntity* p )
 	case MOBJ_ALTITUDE:		return G_MissionPlayerAGL( p );
 	case MOBJ_KILLS:		return (float)( s_missionTargetsTotal - s_missionTargetsRemaining );
 	case MOBJ_WAYPOINTS:	return (float)s_checkpointsHit;
+	case MOBJ_HOME:
+	{
+		// 1 when the player is SETTLED at the home point: close horizontally,
+		// near the ground and slow - covers a landed plane, a parachute arrival
+		// on foot, or simply walking home. 0 otherwise.
+		vec3_t	d;
+		VectorSubtract( p->client_->ps_.origin, obj->origin, d );
+		d[2] = 0;
+		if( VectorLength( d ) > ( obj->radius > 0 ? obj->radius : 600.0f ) )	return 0.0f;
+		if( G_MissionPlayerAGL( p ) > 80.0f )		return 0.0f;
+		if( p->client_->ps_.speed > 80.0f )			return 0.0f;
+		return 1.0f;
+	}
 	default:				return 0.0f;
 	}
 }
@@ -633,6 +791,7 @@ static void G_MissionCheckGates( GameEntity* p )
 			s_checkpointsHit++;
 			SV_GameSendServerCommand( -1, va( "cp \"Gate %d / %d\n\"",
 				s_checkpointsHit, s_numCheckpoints ) );
+			G_RadioCall( ( s_checkpointsHit < s_numCheckpoints ) ? "radio_gate" : "radio_course_done", 700 );
 		}
 	}
 
@@ -682,6 +841,10 @@ void MF_MissionObjectiveFrame( void )
 	{
 		if( !s_objectiveDone[i] )
 		{
+			// objectives latch IN ORDER: "return home" can't complete at the
+			// start point before "destroy the target" has been met.
+			if( i > 0 && !s_objectiveDone[i-1] )
+				break;
 			float v = G_MissionMeasure( &s_objectives[i], p );
 			if( G_MissionCompare( v, s_objectives[i].op, s_objectives[i].value ) )
 			{
@@ -689,6 +852,8 @@ void MF_MissionObjectiveFrame( void )
 				if( s_objectives[i].text[0] )
 					SV_GameSendServerCommand( -1, va( "cp \"%s\n\"", s_objectives[i].text ) );
 				Com_Printf( "Mission objective met: %s\n", s_objectives[i].text );
+				if( s_objectives[i].type == MOBJ_HOME )
+					G_RadioCall( "radio_home", 300 );
 			}
 		}
 		if( s_objectiveDone[i] ) done++;
@@ -696,6 +861,42 @@ void MF_MissionObjectiveFrame( void )
 
 	if( done >= s_numObjectives )
 		G_MissionSendComplete( s_numObjectives, s_numObjectives );
+}
+
+// Called every server frame (even with no mission): flushes due radio calls and
+// fires the one-shot "airborne" call when the mission player first leaves the deck.
+void G_RadioFrame( void )
+{
+	int i, j;
+
+	for( i = 0; i < s_radioQNum; i++ )
+	{
+		if( theLevel.time_ >= s_radioQ[i].time )
+		{
+			SV_GameSendServerCommand( -1, va( "radio %s", s_radioQ[i].name ) );
+			for( j = i + 1; j < s_radioQNum; j++ ) s_radioQ[j-1] = s_radioQ[j];
+			s_radioQNum--; i--;
+		}
+	}
+
+	// tower call once the mission player first gets airborne; AWACS vectors the
+	// target a few seconds later if there's something left to kill
+	if( !s_radioAirborneDone && !s_missionComplete && !s_missionFailed &&
+		( s_missionTargetsTotal > 0 || s_numObjectives > 0 ) )
+	{
+		GameEntity* p = G_MissionFindPlayer();
+		if( p && p->client_ && p->health_ > 0 &&
+			p->client_->vehicle_ >= 0 &&
+			( availableVehicles[p->client_->vehicle_].cat & ( CAT_PLANE | CAT_HELO ) ) &&
+			!( p->client_->ps_.ONOFF & OO_LANDED ) &&
+			G_MissionPlayerAGL( p ) > 60.0f )
+		{
+			s_radioAirborneDone = true;
+			G_RadioCall( "radio_airborne", 0 );
+			if( s_missionTargetsRemaining > 0 )
+				G_RadioCall( "radio_bandit", 5000 );
+		}
+	}
 }
 
 // Called every server frame. At a mission end screen (complete or failed),

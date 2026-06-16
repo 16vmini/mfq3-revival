@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MFQ3 — AI Radio Comms Test Bench</title>
+<style>
+  :root{ --bg:#0b0f0c; --panel:#11160f; --line:#1d2a16; --green:#6cf07a; --dim:#3f6b3a;
+         --amber:#e8b341; --txt:#cfe8c8; --tower:#7fb3ff; --awacs:#ff9ad1; --pilot:#ffd36c; }
+  *{ box-sizing:border-box; }
+  body{ margin:0; background:radial-gradient(circle at 50% -10%, #14210f, #070a07 70%);
+        color:var(--txt); font-family:"Consolas","DejaVu Sans Mono",monospace; padding:28px 18px 70px; }
+  .wrap{ max-width:860px; margin:0 auto; }
+  h1{ font-size:24px; letter-spacing:2px; margin:0 0 4px; color:var(--green); text-shadow:0 0 10px #2f8b3a88; }
+  .sub{ color:var(--dim); font-size:13px; margin:0 0 22px; }
+  .controls{ display:flex; gap:10px; flex-wrap:wrap; margin-bottom:22px; }
+  button{ font-family:inherit; font-size:13px; cursor:pointer; border:1px solid var(--line);
+          background:var(--panel); color:var(--green); padding:9px 16px; border-radius:6px; transition:.15s; }
+  button:hover{ border-color:var(--green); box-shadow:0 0 12px #2f8b3a55; }
+  button.amber{ color:var(--amber); }
+  .card{ border:1px solid var(--line); background:var(--panel); border-radius:8px;
+         padding:14px 16px; margin-bottom:12px; display:grid; grid-template-columns:34px 1fr auto; gap:14px; align-items:center; }
+  .card.playing{ border-color:var(--green); box-shadow:0 0 18px #2f8b3a55; }
+  .num{ color:var(--dim); font-size:12px; text-align:center; }
+  .who{ font-size:11px; letter-spacing:1px; text-transform:uppercase; font-weight:bold; }
+  .who.TOWER{ color:var(--tower); } .who.AWACS{ color:var(--awacs); } .who.PILOT{ color:var(--pilot); }
+  .line{ color:var(--txt); font-size:15px; margin:3px 0; }
+  .meta{ color:var(--dim); font-size:11px; }
+  .trig{ color:var(--amber); }
+  audio{ height:34px; }
+  .legend{ display:flex; gap:18px; flex-wrap:wrap; font-size:12px; margin:18px 0 6px; color:var(--dim); }
+  .dot{ display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:5px; vertical-align:middle; }
+  .foot{ color:var(--dim); font-size:11px; margin-top:24px; line-height:1.6; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>▌ MFQ3 — AI RADIO COMMS</h1>
+  <p class="sub">Neural-TTS voice library · bandpass + squelch radio FX · 12 calls · the 2026 sound a 2003 engine never had.</p>
+
+  <div class="controls">
+    <button id="playAll" class="amber">▶ PLAY MISSION SEQUENCE</button>
+    <button id="stopAll">■ STOP</button>
+  </div>
+
+  <div class="legend">
+    <span><span class="dot" style="background:var(--tower)"></span>TOWER · en-GB-Ryan (British male)</span>
+    <span><span class="dot" style="background:var(--awacs)"></span>AWACS · en-US-Jenny (US female)</span>
+    <span><span class="dot" style="background:var(--pilot)"></span>PILOT · en-US-Guy (US male)</span>
+  </div>
+
+  <div id="list"></div>
+
+  <p class="foot">
+    Files: <code>_incoming/radio/*.wav</code> → packed in <code>play/mfdata/zz_radio.pk3</code> → played in-game via the
+    <code>radio &lt;name&gt;</code> server command (CHAN_ANNOUNCER). Regenerate / tweak wording in <code>_incoming/gen_radio.py</code>.
+  </p>
+</div>
+
+<script>
+// name, voice, spoken line, in-game trigger — "mission sequence" order
+const CALLS = [
+  ["radio_board",       "TOWER", "Ghost One, you are clear to start engines.",                                  "(spare) board acknowledgement"],
+  ["radio_clearance",   "TOWER", "Ghost One, runway two seven, wind calm. Cleared for take off.",               "3.5s after you board the F-16"],
+  ["radio_airborne",    "TOWER", "Ghost One airborne. Good hunting.",                                            "first time you get airborne"],
+  ["radio_bandit",      "AWACS", "Ghost One, be advised: enemy aircraft on the ground, bullseye zero four five. Weapons free.", "5s after airborne (targets remain)"],
+  ["radio_splash",      "AWACS", "Splash one! Good kill, Ghost One. Good kill.",                                 "when you destroy a target"],
+  ["radio_rtb",         "AWACS", "All targets destroyed. Ghost One, return to base.",                            "when the last target is down"],
+  ["radio_home",        "TOWER", "Ghost One, welcome home. Nicely done.",                                        "when you settle back at base"],
+  ["radio_gate",        "AWACS", "Gate clear. Next gate is on your nose.",                                       "passing a waypoint gate"],
+  ["radio_course_done", "AWACS", "That's the course complete. Well flown, Ghost One.",                           "passing the final gate"],
+  ["radio_eject",       "PILOT", "Eject! Eject! Eject!",                                                         "the moment you eject"],
+  ["radio_chute",       "AWACS", "Good chute, good chute. Recovery team is on the way.",                         "3s after ejecting (canopy open)"],
+  ["radio_failed",      "AWACS", "Ghost One is down. I say again: Ghost One is down.",                           "mission failed / aircraft lost"],
+];
+
+const list = document.getElementById('list');
+const audios = [];
+CALLS.forEach(([name, who, line, trig], i) => {
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.innerHTML = `
+    <div class="num">${String(i+1).padStart(2,'0')}</div>
+    <div>
+      <div class="who ${who}">${who}</div>
+      <div class="line">“${line}”</div>
+      <div class="meta">${name}.wav · trigger: <span class="trig">${trig}</span></div>
+    </div>
+    <audio controls preload="none" src="${name}.wav"></audio>`;
+  list.appendChild(card);
+  const a = card.querySelector('audio');
+  a.addEventListener('play', () => { document.querySelectorAll('.card').forEach(c=>c.classList.remove('playing')); card.classList.add('playing'); });
+  a.addEventListener('ended', () => card.classList.remove('playing'));
+  audios.push(a);
+});
+
+let seq = null;
+document.getElementById('playAll').onclick = () => {
+  stop();
+  let i = 0;
+  const next = () => {
+    if (i >= audios.length) return;
+    const a = audios[i++];
+    a.currentTime = 0;
+    a.play();
+    a.onended = () => { setTimeout(next, 450); };
+  };
+  next();
+  seq = true;
+};
+function stop(){ audios.forEach(a => { a.pause(); a.onended = null; }); document.querySelectorAll('.card').forEach(c=>c.classList.remove('playing')); }
+document.getElementById('stopAll').onclick = stop;
+</script>
+</body>
+</html>

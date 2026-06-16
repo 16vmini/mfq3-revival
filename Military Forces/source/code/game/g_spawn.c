@@ -166,6 +166,7 @@ void SP_func_timer (GameEntity *self);
 // MFQ3
 //void SP_misc_waypoint (gentity_t *ent);
 void SP_func_runway (GameEntity *ent);
+void SP_func_arrestor (GameEntity *ent);
 void SP_func_explosive (GameEntity *ent);
 void SP_trigger_recharge (GameEntity *ent);
 void SP_trigger_radio (GameEntity *ent);
@@ -231,6 +232,7 @@ spawn_t	spawns[] = {
 
 	// MFQ3
 	{"func_runway", SP_func_runway},
+	{"func_arrestor", SP_func_arrestor},
 //	{"misc_waypoint", SP_misc_waypoint},
 //	{"misc_vehicle", SP_misc_vehicle},
 	{"func_explosive", SP_func_explosive},

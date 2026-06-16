@@ -109,6 +109,26 @@ void SP_func_runway( GameEntity *ent )
 }
 
 
+/*QUAKED func_arrestor (0 .8 .8) ?
+MFQ3 carrier arrestor-wire trap zone. A LANDED plane rolling through this volume
+is yanked to a stop (handled in G_ArrestorFrame). Make a thin brush spanning the
+landing area of the deck. Non-solid: planes pass through, it only marks the zone.
+*/
+void SP_func_arrestor( GameEntity *ent )
+{
+	SV_SetBrushModel( ent, ent->model_ );		// r.mins/maxs come from the brush
+	ent->r.svFlags		= SVF_USE_CURRENT_ORIGIN;
+	ent->s.eType		= ET_GENERAL;
+	ent->r.contents		= 0;					// non-solid: just a trigger volume
+	ent->classname_		= "func_arrestor";
+	ent->s.pos.trType	= TR_STATIONARY;
+	VectorCopy( ent->s.origin, ent->s.pos.trBase );
+	VectorCopy( ent->s.origin, ent->r.currentOrigin );
+	SV_LinkEntity( ent );						// sets r.absmin/absmax for overlap tests
+}
+
+
+
 /*
 ===============================================================================
 
@@ -323,11 +343,23 @@ void SP_trigger_radio( GameEntity *self )
 */
 
 
-/*QUAKED func_catapult (.5 .5 .5) ?
+/*QUAKED func_catapult (.8 .6 0) ?
+MFQ3 carrier catapult zone (the 2003 team stubbed this out; now implemented).
+A plane PARKED in this volume launches when the pilot hits the action key
+(see G_InCatapultZone + MF_CatapultLaunch). Deck-only: a normal runway has no
+func_catapult, so the action key does nothing there. Non-solid trigger volume.
 */
-void SP_func_catapult( GameEntity *ent ) 
+void SP_func_catapult( GameEntity *ent )
 {
-	ent->freeUp();//G_FreeEntity(ent);
+	SV_SetBrushModel( ent, ent->model_ );
+	ent->r.svFlags		= SVF_USE_CURRENT_ORIGIN;
+	ent->s.eType		= ET_GENERAL;
+	ent->r.contents		= 0;
+	ent->classname_		= "func_catapult";
+	ent->s.pos.trType	= TR_STATIONARY;
+	VectorCopy( ent->s.origin, ent->s.pos.trBase );
+	VectorCopy( ent->s.origin, ent->r.currentOrigin );
+	SV_LinkEntity( ent );
 }
 
 /*QUAKED func_wires (.5 .5 .5) ?
